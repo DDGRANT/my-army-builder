@@ -1,1 +1,1 @@
-# my-ntw3-army-builder
+# my-army-builder
