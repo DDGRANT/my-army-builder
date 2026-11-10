@@ -5,13 +5,13 @@ const State = {
   currentFactionId: null,
   army: [], // 最大 30 队
   costLimit: 14000,
-  maxTotalUnits: 30,    // max_units_all = 30
-  maxArtillery: 3,     // max_artillery = 3
-  maxMob: 3,           // max_mob = 3 (战斗将军固定上限3)
-  maxHeavyCavArt: 7    // max_heavy_cav_art = 7 (重骑兵+火炮联合上限)
+  maxTotalUnits: 30,    // max_units_all = 30[cite: 2]
+  maxArtillery: 3,     // max_artillery = 3[cite: 2]
+  maxMob: 3,           // max_mob = 3[cite: 2]
+  maxHeavyCavArt: 7    // max_heavy_cav_art = 7[cite: 2]
 };
 
-// 类别映射（严格对齐全战底层数据与 Lua 规则）
+// 类别映射[cite: 2]
 const ClassMapping = {
   LINE: ["infantry_line", "infantry_light", "infantry_irregulars"],
   SKIRMISHER: ["infantry_skirmishers"],
@@ -23,7 +23,7 @@ const ClassMapping = {
   GENERAL: ["general"]
 };
 
-// 非阻塞轻量通知气泡 (替代系统卡死弹窗)
+// 非阻塞轻量通知气泡
 function showToast(text, isWarn = false) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -37,7 +37,7 @@ function showToast(text, isWarn = false) {
   }, 2000);
 }
 
-// 从单位名称中正则提取 [...] 里的代码
+// 提取单位名中的速度/类型 Tag (如 G3, AF4, CL11)
 function extractSpeedTag(name) {
   if (!name) return "";
   const match = name.match(/\[(.*?)\]/);
@@ -53,10 +53,10 @@ function getUnitPersonnel(unit) {
   return unit.stats.men ? `${unit.stats.men}` : "-";
 }
 
-// 判断是否为统帅将军（STAFF）
+// 判断是否为主将（STAFF / GENERAL）
 function isStaffGeneral(unit) {
   if (!unit) return false;
-  return unit.class_type === "general" || (unit.name && unit.name.includes("[GEN]"));
+  return unit.class_type === "general" || (unit.key && unit.key.startsWith("Gen_")) || (unit.name && unit.name.includes("[GEN]"));
 }
 
 // 判断是否为战斗将军（COMBAT GENERAL）
@@ -76,57 +76,57 @@ function countArmyByClass(classGroup) {
   return State.army.filter(u => isUnitOfClass(u, classGroup)).length;
 }
 
-// 统计全军中特定番号 Key 的数量
+// 统计全军中特定番号 Key 的数量[cite: 2]
 function countUnitsOfKey(key) {
   return State.army.filter(u => u.key === key).length;
 }
 
-// 确保统帅将军 [GEN] 始终稳居军队第一位（Index 0）
-function sortArmyWithGeneralFirst() {
-  const genIndex = State.army.findIndex(u => isStaffGeneral(u));
-  if (genIndex > 0) {
-    const [genUnit] = State.army.splice(genIndex, 1);
-    State.army.unshift(genUnit); // 移至第一位
-  }
-}
-
-// 对应 army_box_2.luac 的 AddUnit 校验逻辑
+// 对应 army_box_2.luac 的 AddUnit 校验逻辑[cite: 2]
 function validateAddUnit(unit) {
   const currentCost = State.army.reduce((sum, u) => sum + u.cost, 0);
 
-  // 1. 金额预算检查
+  // 1. 金额预算检查[cite: 2]
   if (currentCost + unit.cost > State.costLimit) {
     showToast("超出军费预算上限！");
     return false;
   }
 
-  // 2. 总单位数上限检查 (30 队)
+  // 2. 总单位数上限检查 (30 队)[cite: 2]
   if (State.army.length >= State.maxTotalUnits) {
     showToast(`全军编制已满（最大容量 ${State.maxTotalUnits} 队）！`);
     return false;
   }
 
-  // 3. 单位自身 Cap 检查
+  // 3. 【核心新增】：class 为 general 的主将全军只能带 1 个[cite: 2]
+  if (isStaffGeneral(unit)) {
+    const hasGeneral = State.army.some(u => isStaffGeneral(u));
+    if (hasGeneral) {
+      showToast("全军只能任命 1 位统帅将军！如需更换请先撤销当前主将。");
+      return false;
+    }
+  }
+
+  // 4. 单位自身 Cap 检查[cite: 2]
   if (unit.cap > 0 && countUnitsOfKey(unit.key) >= unit.cap) {
     showToast(`该单位已达到配额上限（编制上限: ${unit.cap} 队）！`);
     return false;
   }
 
-  // 4. 战斗将军上限检查 (固定上限 3 队)
+  // 5. 战斗将军上限检查 (固定上限 3 队)[cite: 2]
   const currentMob = countArmyByClass(ClassMapping.MOB);
   if (isCombatGeneral(unit) && currentMob >= State.maxMob) {
     showToast("战斗将军已达到全军招募上限（最多 3 队）！");
     return false;
   }
 
-  // 5. 火炮上限检查 (最多 3 门)
+  // 6. 火炮上限检查 (最多 3 门)[cite: 2]
   const currentArt = countArmyByClass(ClassMapping.ARTILLERY);
   if (unit.category === "artillery" && currentArt >= State.maxArtillery) {
     showToast("火炮已达全军招募上限（最多 3 门）！");
     return false;
   }
 
-  // 6. 重骑兵与火炮联合上限检查 (合计不超过 7 队)
+  // 7. 重骑兵与火炮联合上限检查 (合计不超过 7 队)[cite: 2]
   const currentHeavyCav = countArmyByClass(ClassMapping.HEAVY_CAV);
   if (isUnitOfClass(unit, ClassMapping.HEAVY_CAV)) {
     if ((currentHeavyCav + 1) + currentArt > State.maxHeavyCavArt) {
@@ -141,7 +141,7 @@ function validateAddUnit(unit) {
     }
   }
 
-  // 7. 线列步兵联动上限判定
+  // 8. 线列步兵联动上限判定[cite: 2]
   const lineCount = countArmyByClass(ClassMapping.LINE);
   const maxSkirmisher = Math.floor(lineCount * 2);
   const maxGrenadier = Math.floor(lineCount / 1.5);
@@ -163,26 +163,28 @@ function validateAddUnit(unit) {
   return true;
 }
 
-// 添加入军
+// 添加入军（主将强行置顶排第 1 个）
 function addUnitToArmy(unit) {
   if (validateAddUnit(unit)) {
-    State.army.push(unit);
-    sortArmyWithGeneralFirst(); // 统帅自动置顶第 1 位
+    if (isStaffGeneral(unit)) {
+      State.army.unshift(unit); // 【核心】：主将强行压入第 0 号索引，绝对稳坐第一格！
+    } else {
+      State.army.push(unit);
+    }
     updateArmyUI();
     renderRoster();
   }
 }
 
-// 从军队移除 (对应 Lua 的 OnDivorceChild 联级剔除)
+// 从底栏移除单位（左键直接调用）[cite: 2]
 function removeUnitFromArmy(index) {
   State.army.splice(index, 1);
   cullExcessUnits();
-  sortArmyWithGeneralFirst();
   updateArmyUI();
   renderRoster();
 }
 
-// 对应 Lua 的 RemoveExcessUnits 自动修剪超额单位
+// 自动修剪超额单位[cite: 2]
 function cullExcessUnits() {
   const lineCount = countArmyByClass(ClassMapping.LINE);
   const maxSkirmisher = Math.floor(lineCount * 2);
@@ -201,7 +203,8 @@ function removeExcessByGroup(classGroup, maxLimit) {
     const toRemove = count - maxLimit;
     let removed = 0;
     for (let i = State.army.length - 1; i >= 0 && removed < toRemove; i--) {
-      if (isUnitOfClass(State.army[i], classGroup)) {
+      // 绝对不能修剪主将
+      if (!isStaffGeneral(State.army[i]) && isUnitOfClass(State.army[i], classGroup)) {
         State.army.splice(i, 1);
         removed++;
       }
@@ -234,7 +237,7 @@ function updateArmyUI() {
   renderBottomTray();
 }
 
-// 渲染底栏 30 槽军队阵列 (支持左键复制、右键取消)
+// 渲染底栏：左键直接撤销，并完整展示人数、价格、速度 Tag
 function renderBottomTray() {
   const container = document.getElementById('army-slots-container');
   container.innerHTML = "";
@@ -246,39 +249,38 @@ function renderBottomTray() {
     if (i < State.army.length) {
       const unit = State.army[i];
       slot.classList.add("filled");
-      slot.title = `${unit.name}\n【左键】：复制此单位\n【右键】：取消此单位`;
+      slot.title = `${unit.name}\n【左键】：直接撤销此单位`;
+
+      const speedTag = extractSpeedTag(unit.name) || (unit.category === 'cavalry' ? 'CA' : 'INF');
+      const menCount = getUnitPersonnel(unit);
 
       slot.innerHTML = `
+        <!-- 左上角速度 Tag -->
+        <div class="badge-pill pill-speed">${speedTag}</div>
+        <!-- 右上角人数 -->
+        <div class="badge-pill pill-men">${menCount}</div>
+        <!-- 兵牌图片 -->
         <img class="slot-img" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'70\\' height=\\'100\\'><rect width=\\'70\\' height=\\'100\\' fill=\\'%231b2129\\'/></svg>'">
-        <div class="slot-remove" title="移除单位">×</div>
+        <!-- 底部金币价格 -->
+        <div class="pill-cost">
+          <span class="coin-icon"></span>
+          <span>${unit.cost}</span>
+        </div>
+        <!-- 鼠标悬停半透明撤销遮罩提示 -->
+        <div class="slot-remove-overlay">点击撤销</div>
       `;
 
-      // 左键点击：复制本单位
-      slot.onclick = (e) => {
-        if (e.target.classList.contains('slot-remove')) {
-          e.stopPropagation();
-          removeUnitFromArmy(i);
-          return;
-        }
-        addUnitToArmy(unit);
-      };
-
-      // 右键点击：取消 / 移除本单位
-      slot.oncontextmenu = (e) => {
-        e.preventDefault(); // 屏蔽浏览器原生右键菜单
-        removeUnitFromArmy(i);
-      };
-
+      // 【核心修改】：在底栏点击左键，直接撤销该单位！
+      slot.onclick = () => removeUnitFromArmy(i);
       attachTooltip(slot, unit);
     } else {
       slot.innerHTML = `<span class="slot-num">${i + 1}</span>`;
-      slot.oncontextmenu = (e) => e.preventDefault();
     }
     container.appendChild(slot);
   }
 }
 
-// 渲染单位池
+// 渲染可选单位池
 function renderRoster() {
   const container = document.getElementById('roster-view');
   container.innerHTML = "";
@@ -297,7 +299,7 @@ function renderRoster() {
     return true;
   });
 
-  // 2. 分类展示栏
+  // 2. 栏目分组配置
   const groups = [
     { title: "STAFF / GENERALS (统帅/指挥部)", filter: u => isStaffGeneral(u) },
     { title: "CAVALRY (骑兵部队)", filter: u => u.category === "cavalry" && !isStaffGeneral(u) },
@@ -397,7 +399,7 @@ function attachTooltip(element, unit) {
   };
 }
 
-// 初始化自定义派系选择下拉面板
+// 初始化派系图文下拉框
 function initCustomFactionSelector() {
   const trigger = document.getElementById('select-trigger');
   const optionsWrap = document.getElementById('select-options');
