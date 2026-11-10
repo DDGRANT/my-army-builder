@@ -3,143 +3,156 @@ const State = {
   factions: [],
   rosters: {},
   currentFactionId: null,
-  army: [],             // 最大 30 队
+  army: [], // 最大 30 队
   costLimit: 14000,
-  maxTotalUnits: 30,    // 对应 max_units_all = 30
-  maxArtillery: 3,     // 对应 max_artillery = 3
-  maxMob: 3,           // 对应 max_mob = 3 (战斗将军固定上限3)
-  maxHeavyCavArt: 7    // 对应 max_heavy_cav_art = 7 (重骑兵+火炮联合上限)
+  maxTotalUnits: 30,    // 对应 max_units_all = 30[cite: 2]
+  maxArtillery: 3,     // 对应 max_artillery = 3[cite: 2]
+  maxMob: 3,           // 对应 max_mob = 3[cite: 2]
+  maxHeavyCavArt: 7    // 对应 max_heavy_cav_art = 7[cite: 2]
 };
 
-// 严格对齐 army_box_2.luac 中的 Class 判定集合
-const ClassGroup = {
-  LINE: ["线列步兵", "轻步兵", "非正规步兵"],
-  SKIRMISHER: ["散兵"],
-  GRENADIER: ["掷弹兵"],
-  ELITE: ["精锐步兵"],
-  ARTILLERY: ["步兵炮", "骑乘炮兵"],
-  HEAVY_CAV: ["重骑兵"],
-  MOB: ["战斗将军"]
+// 【关键修复】：Excel 中导出的英文 class_type 与 Lua 规则的严格映射[cite: 2]
+const ClassMapping = {
+  // 线列步兵、轻步兵、非正规步兵[cite: 2]
+  LINE: ["infantry_line", "infantry_light", "infantry_irregulars"],
+  // 散兵[cite: 2]
+  SKIRMISHER: ["infantry_skirmishers"],
+  // 掷弹兵[cite: 2]
+  GRENADIER: ["infantry_grenadiers"],
+  // 精锐步兵[cite: 2]
+  ELITE: ["infantry_elite"],
+  // 步兵炮、骑乘炮兵[cite: 2]
+  ARTILLERY: ["artillery_foot", "artillery_horse"],
+  // 重骑兵[cite: 2]
+  HEAVY_CAV: ["cavalry_heavy"],
+  // 战斗将军[cite: 2]
+  MOB: ["infantry_mob"]
 };
 
-// 统计特定 Key 的单位数量（对齐 UnitsOfType）
+// 检查某个单位是否属于某个特定分类
+function isUnitOfClass(unit, classGroup) {
+  if (!unit || !unit.class_type) return false;
+  return classGroup.includes(unit.class_type.toLowerCase());
+}
+
+// 统计全军中属于某分类的部队总数
+function countArmyByClass(classGroup) {
+  return State.army.filter(u => isUnitOfClass(u, classGroup)).length;
+}
+
+// 统计全军中特定番号 Key 的数量 (对应 UnitsOfType)[cite: 2]
 function countUnitsOfKey(key) {
   return State.army.filter(u => u.key === key).length;
 }
 
-// 统计特定 Class 类别的单位总数
-function countUnitsByClasses(classList) {
-  return State.army.filter(u => classList.includes(u.class_type)).length;
-}
-
-// 对应 army_box_2.luac 的 AddUnit 前置判定
+// 对应 army_box_2.luac 的 AddUnit 校验逻辑[cite: 2]
 function validateAddUnit(unit) {
   const currentCost = State.army.reduce((sum, u) => sum + u.cost, 0);
 
-  // 1. 金额预算检查: TotalCost + cost <= cost_limit
+  // 1. 金额预算检查[cite: 2]
   if (currentCost + unit.cost > State.costLimit) {
     alert("超出军费预算上限！");
     return false;
   }
 
-  // 2. 总单位数上限检查: TotalCards < max_units_all (30)
+  // 2. 总单位数上限检查 (30 队)[cite: 2]
   if (State.army.length >= State.maxTotalUnits) {
     alert(`全军编制已满（最大容量 ${State.maxTotalUnits} 队）！`);
     return false;
   }
 
-  // 3. 单位自身 Cap 检查: details.Cap == 0 or UnitsOfType(details.Key) < details.Cap
+  // 3. 单位自身 Cap 检查 (details.Cap == 0 or UnitsOfType < details.Cap)[cite: 2]
   if (unit.cap > 0 && countUnitsOfKey(unit.key) >= unit.cap) {
-    alert(`该单位已达到招募上限（编制上限: ${unit.cap} 队）！`);
+    alert(`该单位已达到配额上限（编制上限: ${unit.cap} 队）！`);
     return false;
   }
 
-  // 4. 战斗将军上限检查: max_mob = 3
-  const currentMob = countUnitsByClasses(ClassGroup.MOB);
-  if (ClassGroup.MOB.includes(unit.class_type) && currentMob >= State.maxMob) {
+  // 4. 战斗将军上限检查 (固定上限 3 队)[cite: 2]
+  const currentMob = countArmyByClass(ClassMapping.MOB);
+  if (isUnitOfClass(unit, ClassMapping.MOB) && currentMob >= State.maxMob) {
     alert("战斗将军已达到全军招募上限（最多 3 队）！");
     return false;
   }
 
-  // 5. 火炮上限检查: max_artillery = 3
-  const currentArt = countUnitsByClasses(ClassGroup.ARTILLERY);
-  if (ClassGroup.ARTILLERY.includes(unit.class_type) && currentArt >= State.maxArtillery) {
-    alert("火炮（步兵炮/骑乘炮兵）已达上限（最多 3 门）！");
+  // 5. 火炮上限检查 (最多 3 门)[cite: 2]
+  const currentArt = countArmyByClass(ClassMapping.ARTILLERY);
+  if (isUnitOfClass(unit, ClassMapping.ARTILLERY) && currentArt >= State.maxArtillery) {
+    alert("火炮已达全军招募上限（最多 3 门）！");
     return false;
   }
 
-  // 6. 重骑兵与火炮联合上限检查: current_heavy_cav + current_artillery <= 7
-  const currentHeavyCav = countUnitsByClasses(ClassGroup.HEAVY_CAV);
-  if (ClassGroup.HEAVY_CAV.includes(unit.class_type)) {
+  // 6. 重骑兵与火炮联合上限检查 (合计不超过 7 队)[cite: 2]
+  const currentHeavyCav = countArmyByClass(ClassMapping.HEAVY_CAV);
+  if (isUnitOfClass(unit, ClassMapping.HEAVY_CAV)) {
     if ((currentHeavyCav + 1) + currentArt > State.maxHeavyCavArt) {
       alert("重骑兵与火炮联合数量不能超过 7 队！");
       return false;
     }
   }
-  if (ClassGroup.ARTILLERY.includes(unit.class_type)) {
+  if (isUnitOfClass(unit, ClassMapping.ARTILLERY)) {
     if (currentHeavyCav + (currentArt + 1) > State.maxHeavyCavArt) {
       alert("重骑兵与火炮联合数量不能超过 7 队！");
       return false;
     }
   }
 
-  // 7. 线列步兵联动上限计算
-  const lineCount = countUnitsByClasses(ClassGroup.LINE);
-  const maxSkirmisher = Math.floor(lineCount * 2);        // line * 2
-  const maxGrenadier = Math.floor(lineCount / 1.5);       // line / 1.5
-  const maxElite = Math.floor(lineCount / 2);             // line / 2
+  // 7. 线列步兵联动上限判定[cite: 2]
+  const lineCount = countArmyByClass(ClassMapping.LINE);
+  const maxSkirmisher = Math.floor(lineCount * 2);
+  const maxGrenadier = Math.floor(lineCount / 1.5);
+  const maxElite = Math.floor(lineCount / 2);
 
-  if (ClassGroup.SKIRMISHER.includes(unit.class_type) && countUnitsByClasses(ClassGroup.SKIRMISHER) >= maxSkirmisher) {
-    alert(`散兵超出配额！当前线列步兵数量支持招募上限为 ${maxSkirmisher} 队。`);
+  if (isUnitOfClass(unit, ClassMapping.SKIRMISHER) && countArmyByClass(ClassMapping.SKIRMISHER) >= maxSkirmisher) {
+    alert(`散兵超出上限！当前线列步兵数允许配选 ${maxSkirmisher} 队。`);
     return false;
   }
-  if (ClassGroup.GRENADIER.includes(unit.class_type) && countUnitsByClasses(ClassGroup.GRENADIER) >= maxGrenadier) {
-    alert(`掷弹兵超出配额！当前线列步兵数量支持招募上限为 ${maxGrenadier} 队。`);
+  if (isUnitOfClass(unit, ClassMapping.GRENADIER) && countArmyByClass(ClassMapping.GRENADIER) >= maxGrenadier) {
+    alert(`掷弹兵超出上限！当前线列步兵数允许配选 ${maxGrenadier} 队。`);
     return false;
   }
-  if (ClassGroup.ELITE.includes(unit.class_type) && countUnitsByClasses(ClassGroup.ELITE) >= maxElite) {
-    alert(`精锐步兵超出配额！当前线列步兵数量支持招募上限为 ${maxElite} 队。`);
+  if (isUnitOfClass(unit, ClassMapping.ELITE) && countArmyByClass(ClassMapping.ELITE) >= maxElite) {
+    alert(`精锐步兵超出上限！当前线列步兵数允许配选 ${maxElite} 队。`);
     return false;
   }
 
   return true;
 }
 
-// 添加单位
+// 添加入军
 function addUnitToArmy(unit) {
   if (validateAddUnit(unit)) {
     State.army.push(unit);
-    updateArmyState();
+    updateArmyUI();
   }
 }
 
-// 移除单位 (对应 Lua 的 OnDivorceChild)
+// 从军队移除 (对应 Lua 的 OnDivorceChild 联级剔除)[cite: 2]
 function removeUnitFromArmy(index) {
   State.army.splice(index, 1);
   cullExcessUnits();
-  updateArmyState();
+  updateArmyUI();
 }
 
-// 对应 Lua 的 RemoveExcessUnits 自动剔除逻辑
+// 对应 Lua 的 RemoveExcessUnits 自动修剪超额单位[cite: 2]
 function cullExcessUnits() {
-  const lineCount = countUnitsByClasses(ClassGroup.LINE);
+  const lineCount = countArmyByClass(ClassMapping.LINE);
   const maxSkirmisher = Math.floor(lineCount * 2);
   const maxGrenadier = Math.floor(lineCount / 1.5);
   const maxElite = Math.floor(lineCount / 2);
 
-  removeExcessByClass(ClassGroup.SKIRMISHER, maxSkirmisher);
-  removeExcessByClass(ClassGroup.GRENADIER, maxGrenadier);
-  removeExcessByClass(ClassGroup.ELITE, maxElite);
-  removeExcessByClass(ClassGroup.MOB, State.maxMob);
+  removeExcessByGroup(ClassMapping.SKIRMISHER, maxSkirmisher);
+  removeExcessByGroup(ClassMapping.GRENADIER, maxGrenadier);
+  removeExcessByGroup(ClassMapping.ELITE, maxElite);
+  removeExcessByGroup(ClassMapping.MOB, State.maxMob);
 }
 
-function removeExcessByClass(classList, maxLimit) {
-  let count = countUnitsByClasses(classList);
+function removeExcessByGroup(classGroup, maxLimit) {
+  let count = countArmyByClass(classGroup);
   if (count > maxLimit) {
     const toRemove = count - maxLimit;
     let removed = 0;
     for (let i = State.army.length - 1; i >= 0 && removed < toRemove; i--) {
-      if (classList.includes(State.army[i].class_type)) {
+      if (isUnitOfClass(State.army[i], classGroup)) {
         State.army.splice(i, 1);
         removed++;
       }
@@ -147,16 +160,16 @@ function removeExcessByClass(classList, maxLimit) {
   }
 }
 
-// 刷新界面仪表盘
-function updateArmyState() {
+// 刷新状态仪表盘与底部 30 格卡槽
+function updateArmyUI() {
   const totalCost = State.army.reduce((sum, u) => sum + u.cost, 0);
-  const lineCount = countUnitsByClasses(ClassGroup.LINE);
-  const currentArt = countUnitsByClasses(ClassGroup.ARTILLERY);
-  const currentHeavyCav = countUnitsByClasses(ClassGroup.HEAVY_CAV);
-  const currentMob = countUnitsByClasses(ClassGroup.MOB);
-  const currentSkirmisher = countUnitsByClasses(ClassGroup.SKIRMISHER);
-  const currentGrenadier = countUnitsByClasses(ClassGroup.GRENADIER);
-  const currentElite = countUnitsByClasses(ClassGroup.ELITE);
+  const lineCount = countArmyByClass(ClassMapping.LINE);
+  const currentArt = countArmyByClass(ClassMapping.ARTILLERY);
+  const currentHeavyCav = countArmyByClass(ClassMapping.HEAVY_CAV);
+  const currentMob = countArmyByClass(ClassMapping.MOB);
+  const currentSkirmisher = countArmyByClass(ClassMapping.SKIRMISHER);
+  const currentGrenadier = countArmyByClass(ClassMapping.GRENADIER);
+  const currentElite = countArmyByClass(ClassMapping.ELITE);
 
   document.getElementById('stat-cost').textContent = totalCost;
   document.getElementById('stat-total').textContent = `${State.army.length} / ${State.maxTotalUnits}`;
@@ -164,141 +177,216 @@ function updateArmyState() {
   document.getElementById('stat-artillery').textContent = `${currentArt} / ${State.maxArtillery}`;
   document.getElementById('stat-mob').textContent = `${currentMob} / ${State.maxMob}`;
 
-  document.getElementById('pill-line').textContent = `线列步兵: ${lineCount}`;
-  document.getElementById('pill-skirmisher').textContent = `散兵: ${currentSkirmisher} / ${Math.floor(lineCount * 2)}`;
-  document.getElementById('pill-grenadier').textContent = `掷弹兵: ${currentGrenadier} / ${Math.floor(lineCount / 1.5)}`;
-  document.getElementById('pill-elite').textContent = `精锐步兵: ${currentElite} / ${Math.floor(lineCount / 2)}`;
+  document.getElementById('q-line').textContent = lineCount;
+  document.getElementById('q-skirmisher').textContent = `${currentSkirmisher} / ${Math.floor(lineCount * 2)}`;
+  document.getElementById('q-grenadier').textContent = `${currentGrenadier} / ${Math.floor(lineCount / 1.5)}`;
+  document.getElementById('q-elite').textContent = `${currentElite} / ${Math.floor(lineCount / 2)}`;
 
-  renderArmyGrid();
+  renderBottomTray();
 }
 
-// 渲染选配卡牌网格 (30格)
-function renderArmyGrid() {
-  const grid = document.getElementById('army-grid');
-  grid.innerHTML = "";
+// 渲染底部 30 槽军队托盘
+function renderBottomTray() {
+  const container = document.getElementById('army-slots-container');
+  container.innerHTML = "";
 
   for (let i = 0; i < State.maxTotalUnits; i++) {
     const slot = document.createElement('div');
-    slot.className = "card-slot";
+    slot.className = "army-slot";
 
     if (i < State.army.length) {
       const unit = State.army[i];
       slot.classList.add("filled");
       slot.innerHTML = `
-        <div class="card-inner">
-          <img class="unit-icon" src="${unit.icon}" onerror="this.style.display='none'">
-          <div class="unit-meta">
-            <span class="unit-name">${unit.name}</span>
-            <span class="unit-cost">${unit.cost}</span>
-          </div>
-          <button class="remove-btn" title="移除单位">×</button>
-        </div>
+        <img class="slot-img" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'50\\'><rect width=\\'40\\' height=\\'50\\' fill=\\'%23282c34\\'/></svg>'">
+        <div class="slot-remove">×</div>
       `;
-      slot.querySelector('.remove-btn').onclick = (e) => {
-        e.stopPropagation();
-        removeUnitFromArmy(i);
-      };
+      slot.onclick = () => removeUnitFromArmy(i);
+      attachTooltip(slot, unit);
     } else {
-      slot.innerHTML = `<span class="slot-idx">${i + 1}</span>`;
+      slot.innerHTML = `<span class="slot-num">${i + 1}</span>`;
     }
-    grid.appendChild(slot);
+    container.appendChild(slot);
   }
 }
 
-// 渲染右侧单位池
+// 渲染右侧 Registre 风格分组单位池
 function renderRoster() {
-  const container = document.getElementById('roster-list');
+  const container = document.getElementById('roster-view');
   container.innerHTML = "";
   const list = State.rosters[State.currentFactionId] || [];
-  const search = document.getElementById('search-unit').value.toLowerCase();
-  const currentTab = document.querySelector('.tab-btn.active').dataset.cat;
 
-  list.forEach(unit => {
-    if (currentTab !== 'all' && unit.category !== currentTab) return;
-    if (search && !unit.name.toLowerCase().includes(search) && !unit.key.toLowerCase().includes(search)) return;
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const activeCat = document.querySelector('.filter-btn.active').dataset.cat;
+  const maxPrice = parseInt(document.getElementById('cost-range').value) || 2500;
 
-    const card = document.createElement('div');
-    card.className = "roster-card";
-    card.innerHTML = `
-      <img class="roster-icon" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'50\'><rect width=\'40\' height=\'50\' fill=\'%23444\'/></svg>'">
-      <div class="roster-info">
-        <div class="roster-title">${unit.name}</div>
-        <div class="roster-details">
-          <span>花费: <b>${unit.cost}</b></span>
-          <span>编制上限: <b>${unit.cap > 0 ? unit.cap : '无限制'}</b></span>
+  // 1. 过滤单位
+  const filtered = list.filter(u => {
+    if (activeCat !== 'all' && u.category !== activeCat) return false;
+    if (u.cost > maxPrice) return false;
+    if (search && !u.name.toLowerCase().includes(search) && !u.key.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // 2. 按组分类展示 (STAFF / 骑兵 / 掷弹兵 / 步兵 / 炮兵)
+  const groups = [
+    { title: "STAFF / GENERALS", filter: u => u.category === "general" || u.class_type === "infantry_mob" },
+    { title: "CAVALRY (骑兵部队)", filter: u => u.category === "cavalry" && u.class_type !== "infantry_mob" },
+    { title: "ARTILLERY (火炮阵地)", filter: u => u.category === "artillery" },
+    { title: "GRENADIERS & ELITE (掷弹与精锐步兵)", filter: u => isUnitOfClass(u, ClassMapping.GRENADIER) || isUnitOfClass(u, ClassMapping.ELITE) },
+    { title: "LIGHT & SKIRMISHERS (轻步兵与散兵)", filter: u => isUnitOfClass(u, ClassMapping.SKIRMISHER) || u.class_type === "infantry_light" },
+    { title: "LINE & MILITIA (线列步兵与动员兵)", filter: u => u.category === "infantry" && !isUnitOfClass(u, ClassMapping.GRENADIER) && !isUnitOfClass(u, ClassMapping.ELITE) && !isUnitOfClass(u, ClassMapping.SKIRMISHER) && u.class_type !== "infantry_light" }
+  ];
+
+  groups.forEach(g => {
+    const groupUnits = filtered.filter(g.filter);
+    if (groupUnits.length === 0) return;
+
+    const groupSection = document.createElement('div');
+    groupSection.className = "roster-group";
+    groupSection.innerHTML = `<div class="group-header">${g.title} (${groupUnits.length})</div>`;
+
+    const cardsWrap = document.createElement('div');
+    cardsWrap.className = "group-cards";
+
+    groupUnits.forEach(unit => {
+      const badge = document.createElement('div');
+      badge.className = "unit-badge";
+
+      const currentCount = countUnitsOfKey(unit.key);
+      const capDisplay = unit.cap > 0 ? `${currentCount}/${unit.cap}` : "∞";
+
+      badge.innerHTML = `
+        <span class="badge-cap">${capDisplay}</span>
+        <span class="badge-cost">${unit.cost}</span>
+        <div class="badge-icon-wrap">
+          <img class="badge-icon" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'50\\'><rect width=\\'40\\' height=\\'50\\' fill=\\'%23333\\'/></svg>'">
         </div>
-      </div>
-      <button class="btn-add">+</button>
+        <div class="badge-name" title="${unit.name}">${unit.name}</div>
+      `;
+
+      badge.onclick = () => addUnitToArmy(unit);
+      attachTooltip(badge, unit);
+      cardsWrap.appendChild(badge);
+    });
+
+    groupSection.appendChild(cardsWrap);
+    container.appendChild(groupSection);
+  });
+}
+
+// 绑定鼠标悬浮属性弹窗 (Tooltip)
+function attachTooltip(element, unit) {
+  const tt = document.getElementById('unit-tooltip');
+  element.onmouseenter = (e) => {
+    const s = unit.stats || {};
+    tt.innerHTML = `
+      <div class="tt-title">${unit.name}</div>
+      <div class="tt-row"><span>招募价格:</span><span class="tt-val">${unit.cost}</span></div>
+      <div class="tt-row"><span>编制人数:</span><span class="tt-val">${s.men || '-'} 人</span></div>
+      ${s.guns > 0 ? `<div class="tt-row"><span>火炮门数:</span><span class="tt-val">${s.guns} 门</span></div>` : ''}
+      <div class="tt-row"><span>射击精度:</span><span class="tt-val">${s.accuracy || 0}</span></div>
+      <div class="tt-row"><span>装填速度:</span><span class="tt-val">${s.reload || 0}</span></div>
+      <div class="tt-row"><span>近战攻击:</span><span class="tt-val">${s.melee_attack || 0}</span></div>
+      <div class="tt-row"><span>冲锋加成:</span><span class="tt-val">${s.charge_bonus || 0}</span></div>
+      <div class="tt-row"><span>近战防御:</span><span class="tt-val">${s.defense || 0}</span></div>
+      <div class="tt-row"><span>基础士气:</span><span class="tt-val">${s.morale || 0}</span></div>
     `;
-
-    card.onclick = () => addUnitToArmy(unit);
-    container.appendChild(card);
-  });
+    tt.style.display = 'block';
+  };
+  element.onmousemove = (e) => {
+    tt.style.left = `${e.clientX + 16}px`;
+    tt.style.top = `${e.clientY + 12}px`;
+  };
+  element.onmouseleave = () => {
+    tt.style.display = 'none';
+  };
 }
 
-// 切换派系
-function switchFaction(facId) {
-  State.currentFactionId = facId;
-  State.army = [];
-  
-  const currentFac = State.factions.find(f => f.id === facId);
-  const flagImg = document.getElementById('current-flag');
-  if (currentFac && currentFac.flag) {
-    flagImg.src = currentFac.flag;
-  }
+// 初始化自定义派系选择下拉面板（带旗帜）
+function initCustomFactionSelector() {
+  const trigger = document.getElementById('select-trigger');
+  const optionsWrap = document.getElementById('select-options');
+  optionsWrap.innerHTML = "";
 
-  renderRoster();
-  updateArmyState();
-}
-
-// 初始化派系下拉
-function initFactionSelector() {
-  const sel = document.getElementById('faction-select');
-  sel.innerHTML = "";
   State.factions.forEach(fac => {
-    const opt = document.createElement('option');
-    opt.value = fac.id;
-    opt.textContent = fac.name;
-    sel.appendChild(opt);
+    const item = document.createElement('div');
+    item.className = "option-item";
+    item.innerHTML = `
+      <img src="${fac.flag}" onerror="this.style.display='none'">
+      <span>${fac.name}</span>
+    `;
+    item.onclick = (e) => {
+      e.stopPropagation();
+      switchFaction(fac.id);
+      optionsWrap.classList.remove('open');
+    };
+    optionsWrap.appendChild(item);
   });
+
+  trigger.onclick = (e) => {
+    e.stopPropagation();
+    optionsWrap.classList.toggle('open');
+  };
+
+  document.addEventListener('click', () => {
+    optionsWrap.classList.remove('open');
+  });
+
   if (State.factions.length > 0) {
     switchFaction(State.factions[0].id);
   }
 }
 
-// 初始化加载数据
+// 切换派系
+function switchFaction(facId) {
+  State.currentFactionId = facId;
+  State.army = []; // 换派系按规则重置部队
+
+  const cur = State.factions.find(f => f.id === facId);
+  if (cur) {
+    document.getElementById('current-flag-img').src = cur.flag;
+    document.getElementById('current-flag-img').style.display = 'inline-block';
+    document.getElementById('current-faction-name').textContent = cur.name;
+  }
+
+  renderRoster();
+  updateArmyUI();
+}
+
+// 初始化加载程序
 async function initApp() {
   try {
     const res = await fetch('data/army_data.json');
-    if (!res.ok) throw new Error("未找到本地 army_data.json");
+    if (!res.ok) throw new Error("无法读取本地 army_data.json");
     const data = await res.json();
     State.factions = data.factions;
     State.rosters = data.rosters;
-    initFactionSelector();
+    initCustomFactionSelector();
   } catch (err) {
-    console.warn("未能自动载入 data/army_data.json，可通过数据管理面板上传加载。", err);
+    console.error("加载数据文件失败:", err);
   }
-  setupEventListeners();
-  renderArmyGrid();
-}
 
-// 绑定各类交互事件
-function setupEventListeners() {
-  document.getElementById('faction-select').onchange = (e) => switchFaction(e.target.value);
+  // 绑定事件
+  document.getElementById('search-input').oninput = renderRoster;
+  document.getElementById('cost-range').oninput = (e) => {
+    document.getElementById('cost-range-val').textContent = `≤ ${e.target.value}`;
+    renderRoster();
+  };
   document.getElementById('input-cost-limit').onchange = (e) => {
     State.costLimit = parseInt(e.target.value) || 14000;
-    updateArmyState();
+    updateArmyUI();
   };
-  document.getElementById('search-unit').oninput = renderRoster;
   document.getElementById('btn-clear-army').onclick = () => {
     State.army = [];
-    updateArmyState();
+    updateArmyUI();
+    renderRoster();
   };
 
-  // 分类过滤
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  // 分类 Tab 过滤
+  document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderRoster();
     };
@@ -307,12 +395,11 @@ function setupEventListeners() {
   // 导出配置
   document.getElementById('btn-export').onclick = () => {
     const payload = {
-      faction: State.currentFactionId,
-      units: State.army.map(u => u.key),
-      totalCost: State.army.reduce((s, u) => s + u.cost, 0)
+      fac: State.currentFactionId,
+      units: State.army.map(u => u.key)
     };
     navigator.clipboard.writeText(JSON.stringify(payload));
-    alert("配兵代码已复制到剪贴板！");
+    alert("配兵代码已复制！");
   };
 
   // 导入配置
@@ -321,10 +408,9 @@ function setupEventListeners() {
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
-      if (data.faction && State.rosters[data.faction]) {
-        document.getElementById('faction-select').value = data.faction;
-        switchFaction(data.faction);
-        const pool = State.rosters[data.faction];
+      if (data.fac && State.rosters[data.fac]) {
+        switchFaction(data.fac);
+        const pool = State.rosters[data.fac];
         data.units.forEach(key => {
           const match = pool.find(u => u.key === key);
           if (match) addUnitToArmy(match);
@@ -335,30 +421,7 @@ function setupEventListeners() {
     }
   };
 
-  // 数据热更新弹窗
-  const modal = document.getElementById('data-modal');
-  document.getElementById('btn-manage-data').onclick = () => modal.style.display = 'flex';
-  document.getElementById('btn-close-modal').onclick = () => modal.style.display = 'none';
-
-  // 本地热更 JSON
-  document.getElementById('upload-json-file').onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        State.factions = parsed.factions;
-        State.rosters = parsed.rosters;
-        initFactionSelector();
-        modal.style.display = 'none';
-        alert("热更新数据加载成功！");
-      } catch (err) {
-        alert("解析 JSON 失败，请检查文件格式。");
-      }
-    };
-    reader.readAsText(file);
-  };
+  renderBottomTray();
 }
 
 window.onload = initApp;
