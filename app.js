@@ -5,13 +5,13 @@ const State = {
   currentFactionId: null,
   army: [], // 最大 30 队
   costLimit: 14000,
-  maxTotalUnits: 30,    // 对应 max_units_all = 30[cite: 2]
-  maxArtillery: 3,     // 对应 max_artillery = 3[cite: 2]
-  maxMob: 3,           // 对应 max_mob = 3[cite: 2]
-  maxHeavyCavArt: 7    // 对应 max_heavy_cav_art = 7[cite: 2]
+  maxTotalUnits: 30,    // max_units_all = 30
+  maxArtillery: 3,     // max_artillery = 3[cite: 2]
+  maxMob: 3,           // max_mob = 3 (战斗将军固定上限3)[cite: 2]
+  maxHeavyCavArt: 7    // max_heavy_cav_art = 7 (重骑兵+火炮联合上限)[cite: 2]
 };
 
-// 【关键修复】：Excel 中导出的英文 class_type 与 Lua 规则的严格映射[cite: 2]
+// 类别映射（严格对齐全战底层数据与 Lua 规则）[cite: 2]
 const ClassMapping = {
   // 线列步兵、轻步兵、非正规步兵[cite: 2]
   LINE: ["infantry_line", "infantry_light", "infantry_irregulars"],
@@ -26,21 +26,35 @@ const ClassMapping = {
   // 重骑兵[cite: 2]
   HEAVY_CAV: ["cavalry_heavy"],
   // 战斗将军[cite: 2]
-  MOB: ["infantry_mob"]
+  MOB: ["infantry_mob"],
+  // 统帅将军[cite: 2]
+  GENERAL: ["general"]
 };
 
-// 检查某个单位是否属于某个特定分类
+// 判断是否为统帅将军（STAFF）
+function isStaffGeneral(unit) {
+  if (!unit) return false;
+  return unit.class_type === "general" || (unit.name && unit.name.includes("[GEN]"));
+}
+
+// 判断是否为战斗将军（COMBAT GENERAL）
+function isCombatGeneral(unit) {
+  if (!unit) return false;
+  return unit.class_type === "infantry_mob" || (unit.key && unit.key.endsWith("_com"));
+}
+
+// 判断是否属于某类兵种
 function isUnitOfClass(unit, classGroup) {
   if (!unit || !unit.class_type) return false;
   return classGroup.includes(unit.class_type.toLowerCase());
 }
 
-// 统计全军中属于某分类的部队总数
+// 统计全军中某类兵种的数量
 function countArmyByClass(classGroup) {
   return State.army.filter(u => isUnitOfClass(u, classGroup)).length;
 }
 
-// 统计全军中特定番号 Key 的数量 (对应 UnitsOfType)[cite: 2]
+// 统计全军中特定番号 Key 的数量 (对齐 UnitsOfType)[cite: 2]
 function countUnitsOfKey(key) {
   return State.army.filter(u => u.key === key).length;
 }
@@ -69,14 +83,14 @@ function validateAddUnit(unit) {
 
   // 4. 战斗将军上限检查 (固定上限 3 队)[cite: 2]
   const currentMob = countArmyByClass(ClassMapping.MOB);
-  if (isUnitOfClass(unit, ClassMapping.MOB) && currentMob >= State.maxMob) {
+  if (isCombatGeneral(unit) && currentMob >= State.maxMob) {
     alert("战斗将军已达到全军招募上限（最多 3 队）！");
     return false;
   }
 
-  // 5. 火炮上限检查 (最多 3 门)[cite: 2]
+  // 5. 火炮上限检查 (最多 3 门，包含火炮战斗将军)[cite: 2]
   const currentArt = countArmyByClass(ClassMapping.ARTILLERY);
-  if (isUnitOfClass(unit, ClassMapping.ARTILLERY) && currentArt >= State.maxArtillery) {
+  if (unit.category === "artillery" && currentArt >= State.maxArtillery) {
     alert("火炮已达全军招募上限（最多 3 门）！");
     return false;
   }
@@ -89,7 +103,7 @@ function validateAddUnit(unit) {
       return false;
     }
   }
-  if (isUnitOfClass(unit, ClassMapping.ARTILLERY)) {
+  if (unit.category === "artillery") {
     if (currentHeavyCav + (currentArt + 1) > State.maxHeavyCavArt) {
       alert("重骑兵与火炮联合数量不能超过 7 队！");
       return false;
@@ -98,20 +112,20 @@ function validateAddUnit(unit) {
 
   // 7. 线列步兵联动上限判定[cite: 2]
   const lineCount = countArmyByClass(ClassMapping.LINE);
-  const maxSkirmisher = Math.floor(lineCount * 2);
-  const maxGrenadier = Math.floor(lineCount / 1.5);
-  const maxElite = Math.floor(lineCount / 2);
+  const maxSkirmisher = Math.floor(lineCount * 2);        // line * 2[cite: 2]
+  const maxGrenadier = Math.floor(lineCount / 1.5);       // line / 1.5[cite: 2]
+  const maxElite = Math.floor(lineCount / 2);             // line / 2[cite: 2]
 
   if (isUnitOfClass(unit, ClassMapping.SKIRMISHER) && countArmyByClass(ClassMapping.SKIRMISHER) >= maxSkirmisher) {
-    alert(`散兵超出上限！当前线列步兵数允许配选 ${maxSkirmisher} 队。`);
+    alert(`散兵超出配额！当前线列步兵数量支持招募上限为 ${maxSkirmisher} 队。`);
     return false;
   }
   if (isUnitOfClass(unit, ClassMapping.GRENADIER) && countArmyByClass(ClassMapping.GRENADIER) >= maxGrenadier) {
-    alert(`掷弹兵超出上限！当前线列步兵数允许配选 ${maxGrenadier} 队。`);
+    alert(`掷弹兵超出配额！当前线列步兵数量支持招募上限为 ${maxGrenadier} 队。`);
     return false;
   }
   if (isUnitOfClass(unit, ClassMapping.ELITE) && countArmyByClass(ClassMapping.ELITE) >= maxElite) {
-    alert(`精锐步兵超出上限！当前线列步兵数允许配选 ${maxElite} 队。`);
+    alert(`精锐步兵超出配额！当前线列步兵数量支持招募上限为 ${maxElite} 队。`);
     return false;
   }
 
@@ -123,14 +137,16 @@ function addUnitToArmy(unit) {
   if (validateAddUnit(unit)) {
     State.army.push(unit);
     updateArmyUI();
+    renderRoster(); // 刷新卡牌上的已选配额角标
   }
 }
 
-// 从军队移除 (对应 Lua 的 OnDivorceChild 联级剔除)[cite: 2]
+// 移除单位 (对应 Lua 的 OnDivorceChild 联级剔除)[cite: 2]
 function removeUnitFromArmy(index) {
   State.army.splice(index, 1);
   cullExcessUnits();
   updateArmyUI();
+  renderRoster();
 }
 
 // 对应 Lua 的 RemoveExcessUnits 自动修剪超额单位[cite: 2]
@@ -160,7 +176,7 @@ function removeExcessByGroup(classGroup, maxLimit) {
   }
 }
 
-// 刷新状态仪表盘与底部 30 格卡槽
+// 刷新状态仪表盘与底栏
 function updateArmyUI() {
   const totalCost = State.army.reduce((sum, u) => sum + u.cost, 0);
   const lineCount = countArmyByClass(ClassMapping.LINE);
@@ -185,7 +201,7 @@ function updateArmyUI() {
   renderBottomTray();
 }
 
-// 渲染底部 30 槽军队托盘
+// 渲染底栏 30 格阵列
 function renderBottomTray() {
   const container = document.getElementById('army-slots-container');
   container.innerHTML = "";
@@ -210,7 +226,7 @@ function renderBottomTray() {
   }
 }
 
-// 渲染右侧 Registre 风格分组单位池
+// 渲染可选单位池（严格实现：GEN 进 STAFF，战斗将军回到普通兵种池）
 function renderRoster() {
   const container = document.getElementById('roster-view');
   container.innerHTML = "";
@@ -220,22 +236,48 @@ function renderRoster() {
   const activeCat = document.querySelector('.filter-btn.active').dataset.cat;
   const maxPrice = parseInt(document.getElementById('cost-range').value) || 2500;
 
-  // 1. 过滤单位
+  // 1. 基础过滤
   const filtered = list.filter(u => {
-    if (activeCat !== 'all' && u.category !== activeCat) return false;
+    // 左侧大类过滤映射
+    if (activeCat === 'general' && !isStaffGeneral(u)) return false;
+    if (activeCat !== 'all' && activeCat !== 'general' && u.category !== activeCat) return false;
     if (u.cost > maxPrice) return false;
     if (search && !u.name.toLowerCase().includes(search) && !u.key.toLowerCase().includes(search)) return false;
     return true;
   });
 
-  // 2. 按组分类展示 (STAFF / 骑兵 / 掷弹兵 / 步兵 / 炮兵)
+  // 2. 栏目分组配置
   const groups = [
-    { title: "STAFF / GENERALS", filter: u => u.category === "general" || u.class_type === "infantry_mob" },
-    { title: "CAVALRY (骑兵部队)", filter: u => u.category === "cavalry" && u.class_type !== "infantry_mob" },
-    { title: "ARTILLERY (火炮阵地)", filter: u => u.category === "artillery" },
-    { title: "GRENADIERS & ELITE (掷弹与精锐步兵)", filter: u => isUnitOfClass(u, ClassMapping.GRENADIER) || isUnitOfClass(u, ClassMapping.ELITE) },
-    { title: "LIGHT & SKIRMISHERS (轻步兵与散兵)", filter: u => isUnitOfClass(u, ClassMapping.SKIRMISHER) || u.class_type === "infantry_light" },
-    { title: "LINE & MILITIA (线列步兵与动员兵)", filter: u => u.category === "infantry" && !isUnitOfClass(u, ClassMapping.GRENADIER) && !isUnitOfClass(u, ClassMapping.ELITE) && !isUnitOfClass(u, ClassMapping.SKIRMISHER) && u.class_type !== "infantry_light" }
+    // 只有真正的统帅将军才在 STAFF
+    { 
+      title: "STAFF / GENERALS (统帅/指挥部)", 
+      filter: u => isStaffGeneral(u)
+    },
+    // 骑兵部队（包含普通骑兵与骑兵战斗将军）
+    { 
+      title: "CAVALRY (骑兵部队)", 
+      filter: u => u.category === "cavalry" && !isStaffGeneral(u)
+    },
+    // 火炮阵地（包含普通火炮与火炮战斗将军）
+    { 
+      title: "ARTILLERY (火炮阵地)", 
+      filter: u => u.category === "artillery" && !isStaffGeneral(u)
+    },
+    // 掷弹兵与精锐步兵（包含其直属战斗将军）
+    { 
+      title: "GRENADIERS & ELITE (掷弹与精锐步兵)", 
+      filter: u => !isStaffGeneral(u) && (isUnitOfClass(u, ClassMapping.GRENADIER) || isUnitOfClass(u, ClassMapping.ELITE))
+    },
+    // 轻步兵与散兵（包含其直属战斗将军）
+    { 
+      title: "LIGHT & SKIRMISHERS (轻步兵与散兵)", 
+      filter: u => !isStaffGeneral(u) && (isUnitOfClass(u, ClassMapping.SKIRMISHER) || u.class_type === "infantry_light")
+    },
+    // 线列步兵与其它步兵（包含线列战斗将军）
+    { 
+      title: "LINE & INFANTRY (线列步兵与其它步兵)", 
+      filter: u => !isStaffGeneral(u) && u.category === "infantry" && !isUnitOfClass(u, ClassMapping.GRENADIER) && !isUnitOfClass(u, ClassMapping.ELITE) && !isUnitOfClass(u, ClassMapping.SKIRMISHER) && u.class_type !== "infantry_light"
+    }
   ];
 
   groups.forEach(g => {
@@ -253,6 +295,12 @@ function renderRoster() {
       const badge = document.createElement('div');
       badge.className = "unit-badge";
 
+      // 区分标识战斗将军
+      const isCom = isCombatGeneral(unit);
+      if (isCom) {
+        badge.classList.add("combat-general-badge");
+      }
+
       const currentCount = countUnitsOfKey(unit.key);
       const capDisplay = unit.cap > 0 ? `${currentCount}/${unit.cap}` : "∞";
 
@@ -262,7 +310,9 @@ function renderRoster() {
         <div class="badge-icon-wrap">
           <img class="badge-icon" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'50\\'><rect width=\\'40\\' height=\\'50\\' fill=\\'%23333\\'/></svg>'">
         </div>
-        <div class="badge-name" title="${unit.name}">${unit.name}</div>
+        <div class="badge-name" title="${unit.name}">
+          ${isCom ? '<span style="color:#e5c07b;">[战将] </span>' : ''}${unit.name}
+        </div>
       `;
 
       badge.onclick = () => addUnitToArmy(unit);
@@ -275,15 +325,23 @@ function renderRoster() {
   });
 }
 
-// 绑定鼠标悬浮属性弹窗 (Tooltip)
+// 悬停属性面板 (Tooltip)
 function attachTooltip(element, unit) {
   const tt = document.getElementById('unit-tooltip');
   element.onmouseenter = (e) => {
     const s = unit.stats || {};
+    const isCom = isCombatGeneral(unit);
+    const isStaff = isStaffGeneral(unit);
+
     tt.innerHTML = `
-      <div class="tt-title">${unit.name}</div>
-      <div class="tt-row"><span>招募价格:</span><span class="tt-val">${unit.cost}</span></div>
-      <div class="tt-row"><span>编制人数:</span><span class="tt-val">${s.men || '-'} 人</span></div>
+      <div class="tt-title">
+        ${isCom ? '<span style="color:#e5c07b;">【战斗将军】</span>' : ''}
+        ${isStaff ? '<span style="color:#58a6ff;">【统帅将军】</span>' : ''}
+        ${unit.name}
+      </div>
+      <div class="tt-row"><span>招募价格:</span><span class="tt-val">${unit.cost} 金</span></div>
+      <div class="tt-row"><span>编制配额:</span><span class="tt-val">${unit.cap > 0 ? unit.cap + ' 队' : '无限制'}</span></div>
+      <div class="tt-row"><span>部队人数:</span><span class="tt-val">${s.men || '-'} 人</span></div>
       ${s.guns > 0 ? `<div class="tt-row"><span>火炮门数:</span><span class="tt-val">${s.guns} 门</span></div>` : ''}
       <div class="tt-row"><span>射击精度:</span><span class="tt-val">${s.accuracy || 0}</span></div>
       <div class="tt-row"><span>装填速度:</span><span class="tt-val">${s.reload || 0}</span></div>
@@ -399,7 +457,7 @@ async function initApp() {
       units: State.army.map(u => u.key)
     };
     navigator.clipboard.writeText(JSON.stringify(payload));
-    alert("配兵代码已复制！");
+    alert("配兵代码已复制到剪贴板！");
   };
 
   // 导入配置
