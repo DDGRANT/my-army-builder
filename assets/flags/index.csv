@@ -1,0 +1,50 @@
+﻿faction_id,flags_path_folder,source_file,png,note
+AF_brittany,brittany,flag_132.tga,AF_brittany.png,
+AF_egy_mamelukes,mameluks,flag_132.tga,AF_egy_mamelukes.png,
+AF_prussia_1806,prussia_1806,flag_132.tga,AF_prussia_1806.png,
+AF_russia_1805,russia_imperial,flag_132.tga,AF_russia_1805.png,
+AF_russia_1807,russia_1807,flag_132.tga,AF_russia_1807.png,
+AF_russia_1814,russia_1814,flag_132.tga,AF_russia_1814.png,
+AF_russia_cavalry,russia_cavalry,flag_132.tga,AF_russia_cavalry.png,
+AF_spain_guerrilla,spain_guerrilla,flag_132.tga,AF_spain_guerrilla.png,
+AF_united_netherlands,netherlands,large.tga,AF_united_netherlands.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+PF_france_1806,france_1806,flag_132.tga,PF_france_1806.png,
+PF_france_1814,france_1814,flag_132.tga,PF_france_1814.png,
+PF_france_1815,france_1815,flag_132.tga,PF_france_1815.png,
+PF_france_cavalry,france_cavalry,flag_132.tga,PF_france_cavalry.png,
+PF_france_imperial,france_IG,flag_132.tga,PF_france_imperial.png,
+PF_naples,naples,flag_132.tga,PF_naples.png,
+PF_ottomans,ottomans,flag_132.tga,PF_ottomans.png,
+PF_prussia_1812,prussia,large.tga,PF_prussia_1812.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_001,hre,flag_132.tga,tow_001.png,
+tow_002,france_egy,flag_132.tga,tow_002.png,
+tow_003,bavaria,large.tga,tow_003.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_004,westphalia,large.tga,tow_004.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_005,saxony,flag_132.tga,tow_005.png,
+tow_006,rhine,flag_132.tga,tow_006.png,
+tow_007,wurttemberg,large.tga,tow_007.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_008,saxony_1806,flag_132.tga,tow_008.png,
+tow_009,persian,flag_132.tga,tow_009.png,
+tow_010,austria_1799,flag_132.tga,tow_010.png,
+tow_011,austria_1813,flag_132.tga,tow_011.png,
+tow_012,britain_1799,flag_132.tga,tow_012.png,
+tow_013,france_1799,flag_132.tga,tow_013.png,
+tow_014,france_armee,flag_132.tga,tow_014.png,
+tow_015,prussia_1813,flag_132.tga,tow_015.png,
+tow_016,spain_1813,flag_132.tga,tow_016.png,
+tow_017,sweden,large.tga,tow_017.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_018,france_republic,flag_132.tga,tow_018.png,
+tow_019,austria_1809,flag_132.tga,tow_019.png,
+tow_020,prussia,large.tga,tow_020.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_021,denmark,large.tga,tow_021.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_022,france_1809,flag_132.tga,tow_022.png,
+tow_023,italy_kingdom,large.tga,tow_023.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_024,netherlands,large.tga,tow_024.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_025,poland_lithuania,large.tga,tow_025.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_026,britain,large.tga,tow_026.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_027,russia,flag_132.tga,tow_027.png,
+tow_028,united_states,large.tga,tow_028.png,"fallback: 该文件夹无 flag_132.tga, 用 large.tga 缩放"
+tow_029,france_1812,flag_132.tga,tow_029.png,
+tow_030,spa_britain,flag_132.tga,tow_030.png,
+tow_031,catalonia,flag_132.tga,tow_031.png,
+tow_032,britain_foreign,flag_132.tga,tow_032.png,
