@@ -3,7 +3,7 @@ import json
 import pandas as pd
 
 def build_database():
-    print("正在读取 Excel 数据源...")
+    print("正在读取数据源...")
     
     # 1. 读取派系名称 (factions.xlsx)
     df_factions = pd.read_excel('factions.xlsx', header=None)
@@ -19,7 +19,6 @@ def build_database():
         }
 
     # 2. 读取单位基础属性 (units_tables.xlsx)
-    # [key, 汉化名, 大类, 子类别, 价格, Cap]
     df_units = pd.read_excel('units_tables.xlsx', header=None)
     units_dict = {}
     for _, row in df_units.iterrows():
@@ -49,20 +48,19 @@ def build_database():
                 "morale": int(row[8]) if pd.notnull(row[8]) else 0
             }
 
-    # 4. 读取单位对应兵牌 (uniforms_tables.xlsx)
+    # 4. 读取单位对应兵牌 filename (uniforms_tables.xlsx 第 3 列)
     df_uniforms = pd.read_excel('uniforms_tables.xlsx', header=None)
     uniforms_map = {}
     for _, row in df_uniforms.iterrows():
         fac_id = str(row[0]).strip()
         unit_key = str(row[1]).strip()
-        icon = str(row[2]).strip()
-        uniforms_map[(fac_id, unit_key)] = icon
+        filename = str(row[2]).strip()
+        uniforms_map[(fac_id, unit_key)] = filename
 
-    # 5. 读取派系单位归属权限 (units_to_exclusive_faction_permissions_tables.xlsx)
+    # 5. 读取派系单位权限 (units_to_exclusive_faction_permissions_tables.xlsx)
     df_perms = pd.read_excel('units_to_exclusive_faction_permissions_tables.xlsx', header=None)
     roster_by_faction = {fac_id: [] for fac_id in factions_map}
     
-    # 特殊映射适配: AF_britain_1815 映射为 tow_032
     alias_fac = {"AF_britain_1815": "tow_032"}
 
     for _, row in df_perms.iterrows():
@@ -73,23 +71,23 @@ def build_database():
 
         if perm and unit_key in units_dict:
             unit_data = dict(units_dict[unit_key])
-            # 获取对应的兵牌文件，不存在则取默认
-            icon_name = uniforms_map.get((fac_id, unit_key), uniforms_map.get((raw_fac, unit_key), unit_key))
-            unit_data["icon"] = f"assets/units/{icon_name}.png"
+            
+            # 获取 uniforms_tables 中定义的 filename，并加上 _icon 后缀
+            filename = uniforms_map.get((fac_id, unit_key), uniforms_map.get((raw_fac, unit_key), unit_key))
+            unit_data["filename"] = filename
+            unit_data["icon"] = f"assets/units/{filename}_icon.png"
             
             if fac_id not in roster_by_faction:
                 roster_by_faction[fac_id] = []
             roster_by_faction[fac_id].append(unit_data)
 
-    output = {
-        "factions": list(factions_map.values()),
-        "rosters": roster_by_faction
-    }
-
     os.makedirs("../data", exist_ok=True)
     with open("../data/army_data.json", "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, indent=2)
-    print("构建成功！已生成 data/army_data.json 文件。")
+        json.dump({
+            "factions": list(factions_map.values()),
+            "rosters": roster_by_faction
+        }, f, ensure_ascii=False, indent=2)
+    print("构建完成！兵牌路径已全部规范为 assets/units/{filename}_icon.png")
 
 if __name__ == "__main__":
     build_database()
