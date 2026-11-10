@@ -4,24 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>荣光冲锋 配兵器 — Glorious Charge Army Builder</title>
-  <!-- 添加 ?v=4.0 强行破除浏览器旧缓存 -->
-  <link rel="stylesheet" href="style.css?v=4.0">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- 顶部导航 -->
+  <!-- 顶部控制与数据总览栏 -->
   <header class="top-nav">
     <div class="nav-left">
       <span class="app-brand">荣光冲锋 配兵器</span>
 
-      <!-- 派系图文下拉框 -->
+      <!-- 自定义带派系旗帜下拉选择器 -->
       <div class="custom-select" id="faction-custom-select">
         <div class="select-trigger" id="select-trigger">
-          <img id="current-flag-img" src="assets/flags/default.png" onerror="this.style.display='none'">
+          <img id="current-flag-img" src="assets/flags/default.png" alt="Flag" onerror="this.style.display='none'">
           <span id="current-faction-name">请选择派系...</span>
           <span class="arrow">▼</span>
         </div>
-        <div class="select-options" id="select-options"></div>
+        <div class="select-options" id="select-options">
+          <!-- 动态渲染各派系旗帜与名称 -->
+        </div>
       </div>
     </div>
 
@@ -34,6 +35,7 @@
       <div class="dash-item">战将: <b id="stat-mob">0 / 3</b></div>
     </div>
 
+    <!-- 导入导出与配置操作 -->
     <div class="nav-right">
       <button class="btn btn-dark" id="btn-export">📋 导出配置</button>
       <button class="btn btn-dark" id="btn-import">📥 导入配置</button>
@@ -44,7 +46,7 @@
   <!-- 中间核心工作区 -->
   <div class="main-body">
     
-    <!-- 左侧过滤器侧边栏 -->
+    <!-- 左侧过滤器与配额状态侧边栏 -->
     <aside class="sidebar-filters">
       <div class="filter-group">
         <label class="filter-title">搜索单位</label>
@@ -63,17 +65,17 @@
       </div>
 
       <div class="filter-group">
-        <label class="filter-title">兵种配额状态</label>
+        <label class="filter-title">兵种联动配额</label>
         <div class="quota-list">
           <div class="quota-row">线列步兵: <span id="q-line" class="val">0</span></div>
-          <div class="quota-row">散兵: <span id="q-skirmisher" class="val">0 / 0</span></div>
-          <div class="quota-row">掷弹兵: <span id="q-grenadier" class="val">0 / 0</span></div>
-          <div class="quota-row">精锐步兵: <span id="q-elite" class="val">0 / 0</span></div>
+          <div class="quota-row">散兵配额: <span id="q-skirmisher" class="val">0 / 0</span></div>
+          <div class="quota-row">掷弹兵配额: <span id="q-grenadier" class="val">0 / 0</span></div>
+          <div class="quota-row">精锐步兵配额: <span id="q-elite" class="val">0 / 0</span></div>
         </div>
       </div>
 
       <div class="filter-group">
-        <label class="filter-title">价格区间 (COST)</label>
+        <label class="filter-title">招募预算限制 (COST)</label>
         <div class="cost-slider-wrap">
           <input type="range" id="cost-range" min="0" max="2500" value="2500" step="50">
           <span id="cost-range-val">≤ 2500</span>
@@ -82,22 +84,26 @@
     </aside>
 
     <!-- 中部：可选单位池 -->
-    <main class="roster-view" id="roster-view"></main>
+    <main class="roster-view" id="roster-view">
+      <!-- 动态按 STAFF / 骑兵 / 火炮 / 掷弹与精锐 / 轻步与散兵 / 线列 分类横排渲染 -->
+    </main>
   </div>
 
-  <!-- 底部放大的 30 格选兵阵列槽 (195px 舒适高度) -->
+  <!-- 底部 30 格军队编制卡槽栏 (层叠重叠无滚动条，左键直接撤销) -->
   <footer class="bottom-army-bar">
     <div class="army-tray-label">军队编制 (MAX 30) — 点击卡槽直接撤销单位</div>
-    <div class="army-slots-container" id="army-slots-container"></div>
+    <div class="army-slots-container" id="army-slots-container">
+      <!-- 动态生成 30 个军队椭圆卡槽 -->
+    </div>
   </footer>
 
-  <!-- 悬停属性弹窗 (Tooltip) -->
+  <!-- 悬停属性即时弹窗 (Tooltip) -->
   <div class="unit-tooltip" id="unit-tooltip" style="display:none;"></div>
 
-  <!-- 轻量悬浮通知 -->
+  <!-- 非阻塞悬浮提示气泡 (Toast) -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- 添加 ?v=4.0 强行破除 JS 缓存 -->
-  <script src="app.js?v=4.0"></script>
+  <!-- 纯净路径脚本引用 -->
+  <script src="app.js"></script>
 </body>
 </html>
