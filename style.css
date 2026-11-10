@@ -1,10 +1,491 @@
 /* ========================================================
-   【30格同屏防滚动】：底部编制栏与扑克牌式负边距重叠
+   荣光冲锋 配兵器 - 现代化军团战术界面样式表 (style.css)
+   ======================================================== */
+
+:root {
+  --bg-deep: #0a0c0e;
+  --bg-panel: #13171c;
+  --bg-card: #181d24;
+  --bg-card-hover: #222933;
+  --border-gold: #c5a059;
+  --border-subtle: #29323d;
+  --text-main: #e6edf3;
+  --text-muted: #8b949e;
+  --accent-gold: #e5c07b;
+  --accent-blue: #58a6ff;
+  --danger-red: #da3633;
+}
+
+/* 全局重置：彻底消除外层溢出，防止全局出现双重滚动条 */
+html, body {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+}
+
+/* ========================================================
+   1. 顶部导航与状态总览栏
+   ======================================================== */
+.top-nav {
+  height: 52px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-brand {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+/* 派系图文下拉菜单 */
+.custom-select {
+  position: relative;
+  width: 280px;
+}
+
+.select-trigger {
+  background: #090b0e;
+  border: 1px solid var(--border-gold);
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.select-trigger img {
+  width: 32px;
+  height: 20px;
+  object-fit: cover;
+  border: 1px solid #444;
+  border-radius: 2px;
+}
+
+.select-trigger span {
+  flex: 1;
+  font-size: 13px;
+  color: var(--accent-gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-options {
+  position: absolute;
+  top: 105%;
+  left: 0;
+  width: 100%;
+  max-height: 480px;
+  background: #10141a;
+  border: 1px solid var(--border-gold);
+  border-radius: 4px;
+  overflow-y: auto;
+  z-index: 999;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+}
+
+.select-options.open {
+  display: block;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #1a2028;
+  font-size: 13px;
+}
+
+.option-item:hover {
+  background: #1c2430;
+  color: var(--accent-gold);
+}
+
+.option-item img {
+  width: 34px;
+  height: 22px;
+  object-fit: cover;
+  border: 1px solid #333;
+}
+
+/* 顶部仪表盘统计 */
+.dashboard-summary {
+  display: flex;
+  gap: 16px;
+  background: #0b0e12;
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.dash-item {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.dash-item b {
+  color: var(--accent-gold);
+  font-size: 14px;
+}
+
+.dash-item input {
+  width: 68px;
+  background: #161b22;
+  border: 1px solid #333;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* 右上角按钮组 */
+.nav-right {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.btn-dark {
+  background: #21262d;
+  color: #c9d1d9;
+}
+
+.btn-dark:hover {
+  background: #30363d;
+  border-color: #8b949e;
+}
+
+/* ========================================================
+   2. 主工作区布局 (左侧筛选 + 中部单位库)
+   ======================================================== */
+.main-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0; /* 防止 flexbox 溢出撑破视口 */
+}
+
+/* 左侧筛选侧边栏 */
+.sidebar-filters {
+  width: 220px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-subtle);
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#search-input {
+  background: #090b0e;
+  border: 1px solid #30363d;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.btn-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.filter-btn {
+  background: #181d24;
+  border: 1px solid #2d3642;
+  color: #9aa7b5;
+  padding: 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.filter-btn.active {
+  background: #2a3544;
+  border-color: var(--accent-gold);
+  color: #fff;
+  font-weight: bold;
+}
+
+.quota-list {
+  background: #0d1117;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quota-row {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+.quota-row .val {
+  color: var(--text-main);
+  font-weight: bold;
+}
+
+.cost-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cost-slider-wrap span {
+  font-size: 12px;
+  color: var(--accent-gold);
+  text-align: right;
+}
+
+/* 中部单位卡牌展示库 */
+.roster-view {
+  flex: 1;
+  min-width: 0; /* 关键：防止内部大卡牌挤爆横向空间 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px 80px; /* 底部预留充足缓冲区，绝不遮挡最后一行 */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.roster-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group-header {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent-gold);
+  border-bottom: 1px solid #242c36;
+  padding-bottom: 4px;
+  letter-spacing: 1px;
+}
+
+.group-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* ========================================================
+   3. Registre 风格主选区卡牌徽章
+   ======================================================== */
+.unit-badge {
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.unit-badge:hover {
+  transform: translateY(-3px);
+}
+
+.unit-badge.disabled {
+  opacity: 0.35;
+  filter: grayscale(100%);
+  cursor: not-allowed;
+}
+
+.badge-frame {
+  width: 78px;
+  height: 98px;
+  position: relative;
+  border-radius: 50% / 50%;
+  background: radial-gradient(circle, #2c3545 0%, #12161c 100%);
+  border: 1.5px solid #485466;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.unit-badge:hover .badge-frame {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 12px rgba(197, 160, 89, 0.45);
+}
+
+.combat-general-badge .badge-frame {
+  border-color: var(--accent-gold);
+  background: radial-gradient(circle, #3d3420 0%, #151410 100%);
+}
+
+.badge-icon {
+  width: 76px;
+  height: 96px;
+  object-fit: cover;
+  clip-path: ellipse(34px 44px at 50% 50%);
+  border-radius: 50% / 50%;
+  pointer-events: none;
+}
+
+/* 卡牌四角浮动胶囊标签 */
+.badge-pill {
+  position: absolute;
+  background: rgba(18, 24, 32, 0.95);
+  border: 1px solid #4d5b6e;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 5px;
+  line-height: 1.2;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.pill-speed {
+  top: -2px;
+  left: -4px;
+  background: #1e2836;
+  border-color: #5d6f85;
+}
+
+.pill-men {
+  top: -2px;
+  right: -4px;
+  color: #e6edf3;
+}
+
+.pill-cap {
+  top: 19px;
+  left: -6px;
+  color: var(--accent-blue);
+  border-color: #388bfd;
+}
+
+.pill-cap.maxed {
+  color: #ff7b72;
+  border-color: #da3633;
+}
+
+/* 居中定位的金币价格标签 */
+.pill-cost {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%); /* 确保水平精准居中 */
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(13, 17, 23, 0.95);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--accent-gold);
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.9);
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.coin-icon {
+  width: 11px;
+  height: 11px;
+  background: radial-gradient(circle, #ffe082 30%, #ffb300 100%);
+  border-radius: 50%;
+  border: 1px solid #ffd54f;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.badge-name {
+  font-size: 11px;
+  text-align: center;
+  color: #c9d1d9;
+  line-height: 1.25;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 6px;
+}
+
+/* ========================================================
+   4. 底部 30 槽军队编制栏 (同屏无滚动条，优雅层叠)
    ======================================================== */
 .bottom-army-bar {
-  height: 155px !important;
-  min-height: 155px !important;
-  flex: 0 0 155px !important;
+  height: 160px !important;
+  min-height: 160px !important;
+  flex: 0 0 160px !important; /* 彻底禁止弹性收缩 */
   background: #0d1117;
   border-top: 2px solid var(--border-gold);
   display: flex;
@@ -22,25 +503,26 @@
   letter-spacing: 0.5px;
 }
 
-/* 居中展示，彻底消除横向滚动条 */
+/* 30个卡槽居中排列，在主流分辨率下 100% 同屏显示 */
 .army-slots-container {
   flex: 1;
   display: flex;
-  justify-content: center; /* 30个卡槽居中排列 */
+  justify-content: center;
   align-items: center;
-  overflow: visible; /* 允许悬停卡牌向上浮起 */
-  padding: 8px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 6px;
   box-sizing: border-box;
 }
 
-/* 72x102px 适中大椭圆 + 负边距重叠 */
+/* 66x96px 适中纵向椭圆 + 负边距层叠 */
 .army-slot {
-  width: 72px !important;
-  height: 102px !important;
-  flex: 0 0 72px !important;
-  min-width: 72px !important;
-  min-height: 102px !important;
-  margin-left: -18px; /* 核心：横向重叠 18px，保证 30 个兵牌同屏完整展开 */
+  width: 66px !important;
+  height: 96px !important;
+  flex: 0 0 66px !important;
+  min-width: 66px !important;
+  min-height: 96px !important;
+  margin-left: -14px; /* 横向负边距，刚好同屏容纳 30 个卡槽 */
   border: 1.5px dashed #30363d;
   border-radius: 50% / 50%;
   background: rgba(0,0,0,0.55);
@@ -54,19 +536,17 @@
   transition: transform 0.15s ease, z-index 0.1s ease, box-shadow 0.15s ease;
 }
 
-/* 第 1 个槽位（主将）左侧不设负边距 */
+/* 第 1 个主将槽位取消负边距 */
 .army-slot:first-child {
   margin-left: 0 !important;
 }
 
-/* 空槽位编号 */
 .slot-num {
   font-size: 13px;
   color: #485466;
   font-weight: bold;
 }
 
-/* 已选单位高亮卡槽 */
 .army-slot.filled {
   border: 2px solid var(--border-gold);
   background: radial-gradient(circle, #252d3a 0%, #11151a 100%);
@@ -74,29 +554,28 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.8);
 }
 
-/* 【悬停浮起交互】：鼠标放上去时瞬间跳至最顶层并放大，完整看清立绘与数据 */
+/* 鼠标悬停卡牌向上浮起并放大至最上层，完全露出全部数据 */
 .army-slot:hover {
   z-index: 50 !important;
 }
 
 .army-slot.filled:hover {
   z-index: 50 !important;
-  transform: translateY(-8px) scale(1.12); /* 向上浮起并放大 12% */
+  transform: translateY(-8px) scale(1.15);
   border-color: #ff7b72;
-  box-shadow: 0 0 16px rgba(218, 54, 51, 0.7);
+  box-shadow: 0 0 16px rgba(218, 54, 51, 0.6);
 }
 
-/* 椭圆裁切兵牌 */
 .slot-img {
-  width: 68px;
-  height: 98px;
+  width: 62px;
+  height: 92px;
   object-fit: cover;
-  clip-path: ellipse(32px 46px at 50% 50%);
+  clip-path: ellipse(29px 43px at 50% 50%);
   border-radius: 50% / 50%;
   pointer-events: none;
 }
 
-/* 底栏微缩胶囊标签 */
+/* 底栏徽章精准缩放 */
 .army-slot .badge-pill {
   position: absolute;
   z-index: 6;
@@ -108,28 +587,27 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
-/* 左上角速度 Tag */
 .army-slot .pill-speed {
-  top: 2px;
+  top: 1px;
   left: 2px;
   background: #1e2836;
   border: 1px solid #5d6f85;
   color: #fff;
 }
 
-/* 右上角人数/炮数 */
 .army-slot .pill-men {
-  top: 2px;
+  top: 1px;
   right: 2px;
   background: rgba(18, 24, 32, 0.95);
   border: 1px solid #4d5b6e;
   color: #e6edf3;
 }
 
-/* 底部价格金币 */
 .army-slot .pill-cost {
   position: absolute;
-  bottom: 4px;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -142,6 +620,7 @@
   font-weight: bold;
   box-shadow: 0 2px 6px rgba(0,0,0,0.9);
   z-index: 6;
+  white-space: nowrap;
 }
 
 .army-slot .coin-icon {
@@ -149,7 +628,7 @@
   height: 9px;
 }
 
-/* 鼠标悬停时的撤销半透明提示遮罩 */
+/* 鼠标悬停时的撤销提示遮罩 */
 .slot-remove-overlay {
   position: absolute;
   inset: 0;
@@ -164,6 +643,7 @@
   z-index: 10;
   cursor: pointer;
   letter-spacing: 0.5px;
+  pointer-events: none; /* 确保点击直接穿透给卡槽执行撤销 */
 }
 
 .army-slot.filled:hover .slot-remove-overlay {
@@ -171,40 +651,105 @@
 }
 
 /* ========================================================
-   适配较小笔记本屏幕 (1440px / 1366px 等) 确保同样不滚动
+   5. 悬停属性框 (Tooltip) 与 浮动通知 (Toast)
    ======================================================== */
-@media (max-width: 1720px) {
-  .army-slot {
-    width: 64px !important;
-    height: 92px !important;
-    flex: 0 0 64px !important;
-    min-width: 64px !important;
-    min-height: 92px !important;
-    margin-left: -20px;
-  }
-  .army-slot .slot-img {
-    width: 60px;
-    height: 88px;
-    clip-path: ellipse(28px 42px at 50% 50%);
-  }
+.unit-tooltip {
+  position: fixed;
+  background: #161b22;
+  border: 1px solid var(--border-gold);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: #c9d1d9;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.85);
+  min-width: 180px;
 }
-@media (max-width: 1400px) {
+
+.tt-title {
+  color: var(--accent-gold);
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 4px;
+}
+
+.tt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.tt-val {
+  color: #fff;
+  font-weight: bold;
+}
+
+.toast-container {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-msg {
+  background: rgba(22, 27, 34, 0.95);
+  border: 1px solid #da3633;
+  color: #ff7b72;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastIn 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+  backdrop-filter: blur(4px);
+}
+
+.toast-msg.warn {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}
+
+/* ========================================================
+   6. 屏幕断点自适应 (保证中小型显示器同样 30 格同屏)
+   ======================================================== */
+@media (max-width: 1600px) {
   .army-slot {
-    width: 56px !important;
-    height: 80px !important;
-    flex: 0 0 56px !important;
-    min-width: 56px !important;
-    min-height: 80px !important;
-    margin-left: -20px;
+    width: 58px !important;
+    height: 84px !important;
+    flex: 0 0 58px !important;
+    min-width: 58px !important;
+    min-height: 84px !important;
+    margin-left: -14px;
   }
   .army-slot .slot-img {
-    width: 52px;
-    height: 76px;
-    clip-path: ellipse(24px 36px at 50% 50%);
+    width: 54px;
+    height: 80px;
+    clip-path: ellipse(25px 37px at 50% 50%);
   }
   .bottom-army-bar {
-    height: 135px !important;
-    min-height: 135px !important;
-    flex: 0 0 135px !important;
+    height: 145px !important;
+    min-height: 145px !important;
+    flex: 0 0 145px !important;
   }
 }
