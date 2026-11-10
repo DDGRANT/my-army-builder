@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- 顶部控制条 -->
+  <!-- 顶部导航与仪表盘 -->
   <header class="top-nav">
     <div class="nav-left">
       <span class="app-brand">荣光冲锋 配兵器</span>
@@ -20,9 +20,7 @@
           <span id="current-faction-name">请选择派系...</span>
           <span class="arrow">▼</span>
         </div>
-        <div class="select-options" id="select-options">
-          <!-- 动态渲染各派系旗帜及名字 -->
-        </div>
+        <div class="select-options" id="select-options"></div>
       </div>
     </div>
 
@@ -83,21 +81,20 @@
     </aside>
 
     <!-- 中部：按兵种分栏展开的可选单位池 -->
-    <main class="roster-view" id="roster-view">
-      <!-- 动态按 STAFF / 骑兵 / 掷弹兵 / 线列步兵 分类渲染横排卡牌池 -->
-    </main>
+    <main class="roster-view" id="roster-view"></main>
   </div>
 
-  <!-- 底部固定的 30 格选兵阵列槽 (Registre 底部风格) -->
+  <!-- 底部放大的 30 格选兵阵列槽 -->
   <footer class="bottom-army-bar">
     <div class="army-tray-label">军队编制 (MAX 30)</div>
-    <div class="army-slots-container" id="army-slots-container">
-      <!-- 动态生成 30 个军队圆形/圆角卡槽 -->
-    </div>
+    <div class="army-slots-container" id="army-slots-container"></div>
   </footer>
 
-  <!-- 悬停即时数据弹窗 (Tooltip) -->
+  <!-- 悬停属性弹窗 (Tooltip) -->
   <div class="unit-tooltip" id="unit-tooltip" style="display:none;"></div>
+
+  <!-- 【新增】：非阻塞悬浮通知容器 (替代图二 alert 弹窗) -->
+  <div class="toast-container" id="toast-container"></div>
 
   <script src="app.js"></script>
 </body>
