@@ -20,9 +20,7 @@
           <span id="current-faction-name">请选择派系...</span>
           <span class="arrow">▼</span>
         </div>
-        <div class="select-options" id="select-options">
-          <!-- 动态渲染各派系旗帜与名称 -->
-        </div>
+        <div class="select-options" id="select-options"></div>
       </div>
     </div>
 
@@ -83,18 +81,14 @@
       </div>
     </aside>
 
-    <!-- 中部：可选单位池 -->
-    <main class="roster-view" id="roster-view">
-      <!-- 动态按 STAFF / 骑兵 / 火炮 / 掷弹与精锐 / 轻步与散兵 / 线列 分类横排渲染 -->
-    </main>
+    <!-- 中部：按兵种分栏展开的可选单位池 -->
+    <main class="roster-view" id="roster-view"></main>
   </div>
 
   <!-- 底部 30 格军队编制卡槽栏 (层叠重叠无滚动条，左键直接撤销) -->
   <footer class="bottom-army-bar">
     <div class="army-tray-label">军队编制 (MAX 30) — 点击卡槽直接撤销单位</div>
-    <div class="army-slots-container" id="army-slots-container">
-      <!-- 动态生成 30 个军队椭圆卡槽 -->
-    </div>
+    <div class="army-slots-container" id="army-slots-container"></div>
   </footer>
 
   <!-- 悬停属性即时弹窗 (Tooltip) -->
@@ -103,7 +97,7 @@
   <!-- 非阻塞悬浮提示气泡 (Toast) -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- 纯净路径脚本引用 -->
+  <!-- 逻辑脚本 -->
   <script src="app.js"></script>
 </body>
 </html>
