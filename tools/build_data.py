@@ -3,9 +3,10 @@ import json
 import pandas as pd
 
 def build_database():
-    print("正在读取数据源...")
-    
+    print("正在读取 5 个 Excel 表格...")
+
     # 1. 读取派系名称 (factions.xlsx)
+    # 表格结构: [0]: factions_screen_name_tow_001, [1]: [9]神圣罗马帝国(1792)
     df_factions = pd.read_excel('factions.xlsx', header=None)
     factions_map = {}
     for _, row in df_factions.iterrows():
@@ -19,6 +20,7 @@ def build_database():
         }
 
     # 2. 读取单位基础属性 (units_tables.xlsx)
+    # 表格结构: [0]: Key, [1]: 汉化名, [2]: 大类, [3]: 兵种类别, [4]: 价格, [5]: Cap
     df_units = pd.read_excel('units_tables.xlsx', header=None)
     units_dict = {}
     for _, row in df_units.iterrows():
@@ -32,7 +34,8 @@ def build_database():
             "cap": int(row[5]) if pd.notnull(row[5]) else 0
         }
 
-    # 3. 读取单位战场属性 (unit_stats_land_tables.xlsx)
+    # 3. 读取单位详细战斗属性 (unit_stats_land_tables.xlsx)
+    # 表格结构: [0]: Key, [1]: 人数, [2]: 火炮门数, [3]: 精度, [4]: 装填, [5]: 近战攻击, [6]: 冲锋, [7]: 防御, [8]: 士气
     df_stats = pd.read_excel('unit_stats_land_tables.xlsx', header=None)
     for _, row in df_stats.iterrows():
         key = str(row[0]).strip()
@@ -48,7 +51,8 @@ def build_database():
                 "morale": int(row[8]) if pd.notnull(row[8]) else 0
             }
 
-    # 4. 读取单位对应兵牌 filename (uniforms_tables.xlsx 第 3 列)
+    # 4. 读取单位对应兵牌 filename (uniforms_tables.xlsx)
+    # 表格结构: [0]: 派系, [1]: 单位Key, [2]: 兵牌filename
     df_uniforms = pd.read_excel('uniforms_tables.xlsx', header=None)
     uniforms_map = {}
     for _, row in df_uniforms.iterrows():
@@ -57,10 +61,9 @@ def build_database():
         filename = str(row[2]).strip()
         uniforms_map[(fac_id, unit_key)] = filename
 
-    # 5. 读取派系单位权限 (units_to_exclusive_faction_permissions_tables.xlsx)
+    # 5. 读取派系单位权限并进行派系归属组合 (units_to_exclusive_faction_permissions_tables.xlsx)
     df_perms = pd.read_excel('units_to_exclusive_faction_permissions_tables.xlsx', header=None)
     roster_by_faction = {fac_id: [] for fac_id in factions_map}
-    
     alias_fac = {"AF_britain_1815": "tow_032"}
 
     for _, row in df_perms.iterrows():
@@ -72,7 +75,7 @@ def build_database():
         if perm and unit_key in units_dict:
             unit_data = dict(units_dict[unit_key])
             
-            # 获取 uniforms_tables 中定义的 filename，并加上 _icon 后缀
+            # 根据 uniforms 查出兵牌文件名，并追加 _icon.png 后缀
             filename = uniforms_map.get((fac_id, unit_key), uniforms_map.get((raw_fac, unit_key), unit_key))
             unit_data["filename"] = filename
             unit_data["icon"] = f"assets/units/{filename}_icon.png"
@@ -81,13 +84,21 @@ def build_database():
                 roster_by_faction[fac_id] = []
             roster_by_faction[fac_id].append(unit_data)
 
-    os.makedirs("../data", exist_ok=True)
-    with open("../data/army_data.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "factions": list(factions_map.values()),
-            "rosters": roster_by_faction
-        }, f, ensure_ascii=False, indent=2)
-    print("构建完成！兵牌路径已全部规范为 assets/units/{filename}_icon.png")
+    output = {
+        "factions": list(factions_map.values()),
+        "rosters": roster_by_faction
+    }
+
+    # 输出到上一级目录的 data/ 文件夹
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    os.makedirs(output_dir, exist_ok=True)
+    target_path = os.path.join(output_dir, "army_data.json")
+
+    with open(target_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+
+    print(f"数据编译完成！已生成: {target_path}")
+    print(f"共解析派系: {len(output['factions'])} 个，总兵种条目: {sum(len(v) for v in output['rosters'].values())} 条。")
 
 if __name__ == "__main__":
     build_database()

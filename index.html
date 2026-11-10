@@ -2,97 +2,102 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>NTW3 Army Builder — 拿破仑配兵器</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>荣光冲锋 配兵器 — Glorious Charge Army Builder</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- 顶部导航栏 -->
-  <header class="app-header">
-    <div class="header-left">
-      <img id="current-flag" src="assets/flags/default.png" alt="Faction Flag" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'40\'><rect width=\'60\' height=\'40\' fill=\'%23333\'/></svg>'">
-      <div class="faction-selector-wrap">
-        <label for="faction-select">选择派系：</label>
-        <select id="faction-select"></select>
+  <!-- 顶部控制条 -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <span class="app-brand">荣光冲锋 配兵器</span>
+
+      <!-- 自定义带旗帜的派系下拉选择器 -->
+      <div class="custom-select" id="faction-custom-select">
+        <div class="select-trigger" id="select-trigger">
+          <img id="current-flag-img" src="assets/flags/default.png" onerror="this.style.display='none'">
+          <span id="current-faction-name">请选择派系...</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="select-options" id="select-options">
+          <!-- 动态渲染各派系旗帜及名字 -->
+        </div>
       </div>
     </div>
-    <div class="header-right">
-      <button class="btn btn-secondary" id="btn-export">📋 导出配置</button>
-      <button class="btn btn-secondary" id="btn-import">📥 导入配置</button>
-      <button class="btn btn-secondary" id="btn-manage-data">⚙️ 数据热更管理</button>
-      <button class="btn btn-danger" id="btn-clear-army">清空配置</button>
+
+    <!-- 顶部中央仪表盘 -->
+    <div class="nav-center dashboard-summary">
+      <div class="dash-item">花费: <b id="stat-cost">0</b> / <input type="number" id="input-cost-limit" value="14000" step="500"></div>
+      <div class="dash-item">总数: <b id="stat-total">0 / 30</b></div>
+      <div class="dash-item">重骑+炮: <b id="stat-heavy-art">0 / 7</b></div>
+      <div class="dash-item">火炮: <b id="stat-artillery">0 / 3</b></div>
+      <div class="dash-item">战将: <b id="stat-mob">0 / 3</b></div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn btn-dark" id="btn-export">📋 导出配置</button>
+      <button class="btn btn-dark" id="btn-import">📥 导入配置</button>
+      <button class="btn btn-dark" id="btn-clear-army">清空全军</button>
     </div>
   </header>
 
-  <!-- 核心工作区 -->
-  <main class="main-container">
+  <!-- 中间核心工作区 -->
+  <div class="main-body">
     
-    <!-- 左侧：军队状态仪表盘与选配格子 -->
-    <section class="army-panel">
-      <div class="dashboard-bar">
-        <div class="dash-item"><span class="label">花费金币：</span><span id="stat-cost" class="val">0</span> / <input type="number" id="input-cost-limit" value="14000" step="500"></div>
-        <div class="dash-item"><span class="label">单位总数：</span><span id="stat-total" class="val">0 / 30</span></div>
-        <div class="dash-item"><span class="label">重骑+炮：</span><span id="stat-heavy-art" class="val">0 / 7</span></div>
-        <div class="dash-item"><span class="label">火炮：</span><span id="stat-artillery" class="val">0 / 3</span></div>
-        <div class="dash-item"><span class="label">战将：</span><span id="stat-mob" class="val">0 / 3</span></div>
+    <!-- 左侧过滤器侧边栏 -->
+    <aside class="sidebar-filters">
+      <div class="filter-group">
+        <label class="filter-title">搜索单位</label>
+        <input type="text" id="search-input" placeholder="输入名称或代码...">
       </div>
 
-      <!-- 配兵配额动态提示 -->
-      <div class="quota-indicators">
-        <span class="quota-pill" id="pill-line">线列步兵: 0</span>
-        <span class="quota-pill" id="pill-skirmisher">散兵: 0 / 0</span>
-        <span class="quota-pill" id="pill-grenadier">掷弹兵: 0 / 0</span>
-        <span class="quota-pill" id="pill-elite">精锐步兵: 0 / 0</span>
-      </div>
-
-      <!-- 选中的卡槽列表 (30格) -->
-      <div class="army-grid" id="army-grid"></div>
-    </section>
-
-    <!-- 右侧：当前派系可招募单位池 -->
-    <section class="roster-panel">
-      <div class="roster-filters">
-        <input type="text" id="search-unit" placeholder="🔍 搜索单位名称或代码...">
-        <div class="filter-tabs" id="category-tabs">
-          <button class="tab-btn active" data-cat="all">全部</button>
-          <button class="tab-btn" data-cat="infantry">步兵</button>
-          <button class="tab-btn" data-cat="cavalry">骑兵</button>
-          <button class="tab-btn" data-cat="artillery">炮兵</button>
-          <button class="tab-btn" data-cat="general">将领</button>
+      <div class="filter-group">
+        <label class="filter-title">大类 (CATEGORY)</label>
+        <div class="btn-grid" id="cat-filters">
+          <button class="filter-btn active" data-cat="all">全部</button>
+          <button class="filter-btn" data-cat="general">将领</button>
+          <button class="filter-btn" data-cat="infantry">步兵</button>
+          <button class="filter-btn" data-cat="cavalry">骑兵</button>
+          <button class="filter-btn" data-cat="artillery">炮兵</button>
         </div>
       </div>
 
-      <div class="roster-list" id="roster-list">
-        <!-- 动态渲染卡牌 -->
-      </div>
-    </section>
-  </main>
-
-  <!-- 弹窗：数据与资产管理接口（用于热更新及上传新单位） -->
-  <div class="modal-backdrop" id="data-modal" style="display:none;">
-    <div class="modal-content">
-      <h3>⚙️ 数据与图片接口配置</h3>
-      <p class="hint">你可以直接上传最新编译出的 <code>army_data.json</code> 进行热更新，或新增自制单位数据：</p>
-      
-      <div class="form-group">
-        <label>热更新数据文件 (army_data.json)：</label>
-        <input type="file" id="upload-json-file" accept=".json">
+      <div class="filter-group">
+        <label class="filter-title">兵种配额状态</label>
+        <div class="quota-list">
+          <div class="quota-row">线列步兵: <span id="q-line" class="val">0</span></div>
+          <div class="quota-row">散兵: <span id="q-skirmisher" class="val">0 / 0</span></div>
+          <div class="quota-row">掷弹兵: <span id="q-grenadier" class="val">0 / 0</span></div>
+          <div class="quota-row">精锐步兵: <span id="q-elite" class="val">0 / 0</span></div>
+        </div>
       </div>
 
-      <hr>
-      <h4>图标与兵牌路径映射规则：</h4>
-      <ul class="rule-notes">
-        <li>派系旗帜存放路径：<code>assets/flags/{faction_id}.png</code></li>
-        <li>兵牌图片存放路径：<code>assets/units/{icon_filename}.png</code></li>
-        <li>系统自带占位容错机制，若本地对应兵牌缺失将自动回退显示文字铭牌。</li>
-      </ul>
-
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="btn-close-modal">关闭</button>
+      <div class="filter-group">
+        <label class="filter-title">价格区间 (COST)</label>
+        <div class="cost-slider-wrap">
+          <input type="range" id="cost-range" min="0" max="2500" value="2500" step="50">
+          <span id="cost-range-val">≤ 2500</span>
+        </div>
       </div>
-    </div>
+    </aside>
+
+    <!-- 中部：按兵种分栏展开的可选单位池 -->
+    <main class="roster-view" id="roster-view">
+      <!-- 动态按 STAFF / 骑兵 / 掷弹兵 / 线列步兵 分类渲染横排卡牌池 -->
+    </main>
   </div>
+
+  <!-- 底部固定的 30 格选兵阵列槽 (Registre 底部风格) -->
+  <footer class="bottom-army-bar">
+    <div class="army-tray-label">军队编制 (MAX 30)</div>
+    <div class="army-slots-container" id="army-slots-container">
+      <!-- 动态生成 30 个军队圆形/圆角卡槽 -->
+    </div>
+  </footer>
+
+  <!-- 悬停即时数据弹窗 (Tooltip) -->
+  <div class="unit-tooltip" id="unit-tooltip" style="display:none;"></div>
 
   <script src="app.js"></script>
 </body>
