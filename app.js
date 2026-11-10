@@ -7,8 +7,8 @@ const State = {
   costLimit: 14000,
   maxTotalUnits: 30,    // max_units_all = 30[cite: 2]
   maxArtillery: 3,     // max_artillery = 3[cite: 2]
-  maxMob: 3,           // max_mob = 3[cite: 2]
-  maxHeavyCavArt: 7    // max_heavy_cav_art = 7[cite: 2]
+  maxMob: 3,           // max_mob = 3 (战斗将军固定上限3)[cite: 2]
+  maxHeavyCavArt: 7    // max_heavy_cav_art = 7 (重骑兵+火炮联合上限)[cite: 2]
 };
 
 // 类别映射[cite: 2]
@@ -37,7 +37,7 @@ function showToast(text, isWarn = false) {
   }, 2000);
 }
 
-// 提取单位名中的速度/类型 Tag (如 G3, AF4, CL11)
+// 提取单位名中的代码 (如 G3, AF4, CL11)
 function extractSpeedTag(name) {
   if (!name) return "";
   const match = name.match(/\[(.*?)\]/);
@@ -53,7 +53,7 @@ function getUnitPersonnel(unit) {
   return unit.stats.men ? `${unit.stats.men}` : "-";
 }
 
-// 判断是否为主将（STAFF / GENERAL）
+// 判断是否为统帅主将（STAFF / GENERAL）
 function isStaffGeneral(unit) {
   if (!unit) return false;
   return unit.class_type === "general" || (unit.key && unit.key.startsWith("Gen_")) || (unit.name && unit.name.includes("[GEN]"));
@@ -81,7 +81,16 @@ function countUnitsOfKey(key) {
   return State.army.filter(u => u.key === key).length;
 }
 
-// 对应 army_box_2.luac 的 AddUnit 校验逻辑[cite: 2]
+// 【关键修复】：主将排在第一位（强制锁定在索引 0）
+function enforceGeneralFirst() {
+  const genIndex = State.army.findIndex(u => isStaffGeneral(u));
+  if (genIndex > 0) {
+    const [genUnit] = State.army.splice(genIndex, 1);
+    State.army.unshift(genUnit); // 拔出并压入第 0 号位
+  }
+}
+
+// 单位招募校验逻辑[cite: 2]
 function validateAddUnit(unit) {
   const currentCost = State.army.reduce((sum, u) => sum + u.cost, 0);
 
@@ -97,11 +106,11 @@ function validateAddUnit(unit) {
     return false;
   }
 
-  // 3. 【核心新增】：class 为 general 的主将全军只能带 1 个[cite: 2]
+  // 3. 【关键修复】：class 为 general 的统帅主将全军只能带 1 个[cite: 2]
   if (isStaffGeneral(unit)) {
-    const hasGeneral = State.army.some(u => isStaffGeneral(u));
-    if (hasGeneral) {
-      showToast("全军只能任命 1 位统帅将军！如需更换请先撤销当前主将。");
+    const existingGenerals = State.army.filter(u => isStaffGeneral(u)).length;
+    if (existingGenerals >= 1) {
+      showToast("全军只能带 1 个主将！如需更换请先在底栏点击撤销当前主将。");
       return false;
     }
   }
@@ -163,23 +172,21 @@ function validateAddUnit(unit) {
   return true;
 }
 
-// 添加入军（主将强行置顶排第 1 个）
+// 添加入军
 function addUnitToArmy(unit) {
   if (validateAddUnit(unit)) {
-    if (isStaffGeneral(unit)) {
-      State.army.unshift(unit); // 【核心】：主将强行压入第 0 号索引，绝对稳坐第一格！
-    } else {
-      State.army.push(unit);
-    }
+    State.army.push(unit);
+    enforceGeneralFirst(); // 立即锁定主将在第 1 位
     updateArmyUI();
     renderRoster();
   }
 }
 
-// 从底栏移除单位（左键直接调用）[cite: 2]
+// 从底栏移除单位（左键点击即撤销）[cite: 2]
 function removeUnitFromArmy(index) {
   State.army.splice(index, 1);
   cullExcessUnits();
+  enforceGeneralFirst();
   updateArmyUI();
   renderRoster();
 }
@@ -203,7 +210,6 @@ function removeExcessByGroup(classGroup, maxLimit) {
     const toRemove = count - maxLimit;
     let removed = 0;
     for (let i = State.army.length - 1; i >= 0 && removed < toRemove; i--) {
-      // 绝对不能修剪主将
       if (!isStaffGeneral(State.army[i]) && isUnitOfClass(State.army[i], classGroup)) {
         State.army.splice(i, 1);
         removed++;
@@ -237,8 +243,10 @@ function updateArmyUI() {
   renderBottomTray();
 }
 
-// 渲染底栏：左键直接撤销，并完整展示人数、价格、速度 Tag
+// 渲染底栏：左键点击直接撤销，且完整展示人数、价格、速度 Tag
 function renderBottomTray() {
+  enforceGeneralFirst(); // 每次渲染强制确保主将在第一位
+
   const container = document.getElementById('army-slots-container');
   container.innerHTML = "";
 
@@ -249,7 +257,7 @@ function renderBottomTray() {
     if (i < State.army.length) {
       const unit = State.army[i];
       slot.classList.add("filled");
-      slot.title = `${unit.name}\n【左键】：直接撤销此单位`;
+      slot.title = `${unit.name}\n【点击左键】：直接撤销此单位`;
 
       const speedTag = extractSpeedTag(unit.name) || (unit.category === 'cavalry' ? 'CA' : 'INF');
       const menCount = getUnitPersonnel(unit);
@@ -257,20 +265,24 @@ function renderBottomTray() {
       slot.innerHTML = `
         <!-- 左上角速度 Tag -->
         <div class="badge-pill pill-speed">${speedTag}</div>
-        <!-- 右上角人数 -->
+        
+        <!-- 右上角编制人数 -->
         <div class="badge-pill pill-men">${menCount}</div>
+        
         <!-- 兵牌图片 -->
-        <img class="slot-img" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'70\\' height=\\'100\\'><rect width=\\'70\\' height=\\'100\\' fill=\\'%231b2129\\'/></svg>'">
+        <img class="slot-img" src="${unit.icon}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'110\\'><rect width=\\'80\\' height=\\'110\\' fill=\\'%231b2129\\'/></svg>'">
+        
         <!-- 底部金币价格 -->
         <div class="pill-cost">
           <span class="coin-icon"></span>
           <span>${unit.cost}</span>
         </div>
-        <!-- 鼠标悬停半透明撤销遮罩提示 -->
-        <div class="slot-remove-overlay">点击撤销</div>
+        
+        <!-- 鼠标悬停撤销提示遮罩 -->
+        <div class="slot-remove-overlay">✕ 撤销</div>
       `;
 
-      // 【核心修改】：在底栏点击左键，直接撤销该单位！
+      // 左键直接撤销
       slot.onclick = () => removeUnitFromArmy(i);
       attachTooltip(slot, unit);
     } else {
